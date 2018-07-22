@@ -1,18 +1,17 @@
 Welcome to Randy!
 
 Randy is a minimalist music streamer and player based on Nodejs and MPV.
-This repository currently hosts the codebase and some instructions on how to set it up on your raspberry pi.
 
 ![Randy Player July18](/images/Randy.png)
 
 # Play anything
 
-MPV with the help of Youtube-dl and FFmpeg can pretty much play anything you throw at them.
+[MPV](https://mpv.io/) with the help of [Youtube-dl](https://rg3.github.io/youtube-dl/) and [FFmpeg](https://www.ffmpeg.org/) can pretty much play anything you throw at them.
 Therefore, Randy can play web radio, podcasts, soundcloud, mixcloud, almost all music file types.
 
 # Always playing something
 
-Randy has a really efficient randomiser algorithms which make sure that there is always something next in your playlist.
+Randy has a really efficient randomiser algorithm which makes sure that there is always something next in your playlist.
 
 # Minimal, sexy and pure good sound
 
@@ -25,11 +24,12 @@ I am currently building Randy with RPI in mind and maybe as an Electron app late
 RPI will be vanilla Raspbian-lite with minimal dependencies and basic i2s DAC configurations.
 
 This will probably be the first non-MPD RPI streamer and very minimalistic at the stage.
-Instead of MPD I am using MPV which is a beast of a video player, but has all the good stuff to put out amazing sound quality as well.
+Instead of [MPD](https://www.musicpd.org/) I am using [MPV](https://mpv.io/) which is a beast of a video player, but has all the good stuff to put out amazing sound quality as well.
 
 # Collaboration
 
-If anyone is interested to contribute let me know. 
+If anyone is interested to collaborate or contribute let me know. 
+This is a fun project with lots of possible enhancements, I'll probably need to do some code cleanup soon :)
 
 # Starting to use for now:
 
@@ -61,4 +61,4 @@ npm start
 ```
 
 RPI specific instructions will be coming soon! 
-Meanwhile you can check out this cool wiki page on getting your DAC to work [https://github.com/guussie/PiDS/wiki/09.-How-to-make-various-DACs-work] (https://github.com/guussie/PiDS/wiki/09.-How-to-make-various-DACs-work)
+Meanwhile you can check out [this cool wiki page](https://github.com/guussie/PiDS/wiki/09.-How-to-make-various-DACs-work) on getting your DAC to work.
