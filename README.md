@@ -3,6 +3,8 @@ Welcome to Randy!
 Randy is a minimalist music streamer and player based on Nodejs and MPV.
 This repository currently hosts the codebase and some instructions on how to set it up on your raspberry pi.
 
+![Randy Player July18](/images/Randy.png)
+
 # Play anything
 
 MPV with the help of Youtube-dl and FFmpeg can pretty much play anything you throw at them.
@@ -59,4 +61,4 @@ npm start
 ```
 
 RPI specific instructions will be coming soon! 
-Meanwhile you can check out this cool wiki page on getting your DAC to work (https://github.com/guussie/PiDS/wiki/09.-How-to-make-various-DACs-work) [https://github.com/guussie/PiDS/wiki/09.-How-to-make-various-DACs-work]
+Meanwhile you can check out this cool wiki page on getting your DAC to work [https://github.com/guussie/PiDS/wiki/09.-How-to-make-various-DACs-work] (https://github.com/guussie/PiDS/wiki/09.-How-to-make-various-DACs-work)
