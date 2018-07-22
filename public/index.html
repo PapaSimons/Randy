@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Randy</title>
+      <!-- JS -->
+      <script src='JS/socket.io.js'></script>
+      <script src='JS/jquery-3.3.1.min.js'></script>
+      <!-- base CSS -->
+      <link rel="stylesheet" href="CSS/basecss.css">
+  </head>
+  <body>
+      <main>
+          <div id="browse-pane">
+              <div id="browse-zen">
+                  &nbsp;
+              </div>
+              <div id="browse-home">
+                  <div class="browse-top-menu">
+                    <img class='browse-top-back-icon clickable' src="IMG/back_icon.png"/>
+                    <input id="search-bar" placeholder="weburls or keywords.." type="text"/>  
+                    <img class="browse-top-menu-icon clickable" onclick="browsepane('files');" src="IMG/icon_folder.png"/>
+                    <img class="browse-top-menu-icon clickable" id="stickybutt" onclick="browsepane('stickies');" src="IMG/icon_lovehol.png"/>
+                  </div>
+                  <div id="browse-search-url">
+                      &nbsp;
+                  </div>
+                  <div id="browse-modes">
+                    <div id="browse-search-results">
+                      &nbsp;
+                    </div>
+                    <div id="browse-init">
+                        <div class="browse-init-sticky">
+                          &nbsp;
+                        </div>
+                        <div class="browse-init-randomalbums">
+                          &nbsp;
+                        </div>
+                    </div>
+                    <div id="browse-files">
+                      &nbsp;
+                    </div>
+                    <div id="browse-stickies">
+                      &nbsp;
+                    </div>
+                </div>
+              </div>
+          </div>
+          <div id="playlist-pane">
+            <div id="playlist-pane-top">
+                <div id="top-icon-menu"><img class="clickable" src="IMG/menu_icon.png"/></div>
+                <div id="top-text">Randy</div>
+            </div>
+            <div id="playlist-pane-songlist">
+              <div id="songlist"></div>
+            </div>
+            <div id="playlist-pane-player">
+                <div id="control-panel" class="control-panel">
+                    <div class="controls">
+                        <div class="prev"></div>
+                        <div id='seekdial' usemap="hackdial">
+                            <input type="text" value="50" class="dial" id="dial" usemap="hackdial">
+                        </div>
+                        <div id="play" class="album-art" usemap="hackalbum"></div>
+                        <!--<div  class="play"></div>-->
+                        <div class="next"></div>
+                        
+                        <map name="hackalbum">
+                            <area shape="circle" coords="246,246,246" />
+                        </map>
+                        <map name="hackdial">
+                            <area shape="circle" coords="270,270,270" />
+                        </map>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+      </main>  
+      <script src="JS/api.js"></script>
+      <script src='JS/jquery.knob.min.js'></script>
+      <script src='JS/sortable.js'></script>
+      <script src='JS/main.js'></script>
+  </body>
+</html>
+

@@ -1,0 +1,24 @@
+{
+  "name": "Randy",
+  "version": "1.0.0",
+  "description": "Randy music player",
+  "main": "index.js",
+  "start": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "author": "Gideon",
+  "license": "ISC",
+  "dependencies": {
+    "album-art": "^2.0.1",
+    "express": "^4.16.3",
+    "find": "^0.2.9",
+    "fsevents": "^1.2.4",
+    "melanke-watchjs": "^1.4.3",
+    "metaget": "^1.0.6",
+    "mpv-wrapper": "^0.1.0",
+    "music-metadata": "^2.3.2",
+    "simple-json-db": "^1.2.1",
+    "socket.io": "^2.1.1"
+  }
+}
