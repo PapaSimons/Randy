@@ -133,6 +133,7 @@ socket.on('duration', function(obj){
 socket.on('pos', function(obj){
     if (!ispausing){
         isplaying = true;
+        //rotate
         if (!$('#control-panel').hasClass('active')){
             $('#control-panel').addClass('active');
         }
@@ -347,7 +348,7 @@ $("#dial").knob({
     }
 });
 
-$("#seekdial").mousedown(function() {
+$("#seekdial").bind("mousedown touchstart" ,function() {
     seekbarreleased = false;
 });
 

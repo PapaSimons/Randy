@@ -23,7 +23,7 @@ Sound quality is most important, I build my own amplifiers and speakers with the
 I am currently building Randy with RPI in mind and maybe as an Electron app later if it makes sense.
 RPI will be vanilla Raspbian-lite with minimal dependencies and basic i2s DAC configurations.
 
-This will probably be the first non-MPD RPI streamer and very minimalistic at the stage.
+This will probably be the first non-MPD RPI streamer and very minimalistic at this stage.
 Instead of [MPD](https://www.musicpd.org/) I am using [MPV](https://mpv.io/) which is a beast of a video player, but has all the good stuff to put out amazing sound quality as well.
 
 # Collaboration
@@ -46,7 +46,6 @@ On linux:
 ```sh
 sudo apt-get update
 sudo apt-get dist-upgrade
-sudo reboot
 sudo apt-get install mpv youtube-dl
 ```
 

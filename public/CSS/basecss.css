@@ -339,13 +339,12 @@ main{
 #playlist-pane-player .control-panel.active .album-art {
   animation: rotation 3s infinite linear;
   -webkit-animation: rotation 3s infinite linear;
-  animation-fill-mode: forwards;
 }
 @keyframes rotation {
-  0% {
+  from {
     transform: rotate(0deg);
   }
-  100% {
+  to {
     transform: rotate(360deg);
   }
 }
@@ -367,15 +366,11 @@ main{
     margin-top: 65px;
   background-color: #fff;
   cursor: pointer;
-  transition: background-color .3s ease;
-  -webkit-transition: background-color .3s ease;
 }
 #playlist-pane-player .control-panel .controls .prev:hover,
 #playlist-pane-player .control-panel .controls .play:hover,
 #playlist-pane-player .control-panel .controls .next:hover {
   background-color: #eee;
-  transition: background-color .3s ease;
-  -webkit-transition: background-color .3s ease;
 }
 #playlist-pane-player .control-panel .controls .prev {
   background-image: url('../IMG/icon_prev.png');
