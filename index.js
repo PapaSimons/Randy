@@ -3,6 +3,9 @@
 // built by : Gideon Simons, 2018
 // ==============================================
 
+//consol log with timestamp
+require('console-stamp')(console, { pattern: 'dd/mm/yyyy HH:MM:ss' });
+
 //dependencies
 var express = require('express');
 var app = express();
@@ -20,6 +23,7 @@ var player = null;
 var psocket = null;
 var port = process.env.PORT || 8888;
 var isloaded = false;
+var sockettimeout = null;
 var watch = WatchJS.watch;
 var seekable = true;
 
@@ -177,15 +181,15 @@ function initRandy(){
     //load playlist
     playlist.getAllSongs().then(function(){
         playlist.initPlaylist(3).then(function(fsong){
+            //watch the playlist
+            watch(playlist.getPlayList(), function(){
+                io.sockets.emit('playlist', {playlist:playlist.getPlayList(), playing:playlist.getPlaying()});
+            });
             if (player != null){
                 console.log("loading first song - " + fsong.songfile);
                 playsong(fsong); 
             }
         });
-    });
-    //watch the playlist
-    watch(playlist.getPlayList(), function(){
-        io.sockets.emit('playlist', {playlist:playlist.getPlayList(), playing:playlist.getPlaying()});
     });
     //create the player instance
     createNewPlayer();
@@ -193,13 +197,20 @@ function initRandy(){
 
 initRandy();   
 
+//kill mpv when nodejs exits
 process.on('SIGINT', function() {
     killmpv();
     process.exit(0);
 });
 
+//keep nodejs alive
+process.on('uncaughtException', function (err) {
+    console.log(err);
+}); 
+
 function createNewPlayer(){
     //create player instance
+    //createPlayer(['--no-video']).then(function(newplayer){
     createPlayer({ args: ['--no-video'] }, (err, newplayer) => {
         if (err) {
             console.error("Error creating player - " + err);
@@ -225,9 +236,7 @@ function createNewPlayer(){
             });
             //player.observeProperty('audio-params', t => console.log('audio-params: ' + JSON.stringify(t)));
             player.observeProperty('media-title', function(t){
-                if (t == null && !isloaded){
-                    playsong(playlist.nextsong());
-                }
+                isloaded = true;
                 var curs = playlist.getCurrentSong();
                 console.log('Title changed: ' + t);
                 io.sockets.emit('nowplaying', {title:t,albumart:curs.albumart});
@@ -251,18 +260,17 @@ function createNewPlayer(){
             //player.observeProperty('AV', t => console.log('Audio specs: ' + t));
             //player.observeProperty('A', t => console.log('Player info: ' + t));
             //when mpv is idle
+            //testing alternative to end of file with idle
             player.onIdle(() => {
-                console.error('idle');
+                console.log('idle - loading next song');
+                playsong(playlist.nextsong());
             });
+            /*
             //finished playing a file
             player.onEndFile(() => {
-                console.log('end of file');
-                if (!isloaded){
-                    console.log('real end of file - playing next');
-                    playsong(playlist.nextsong());
-                }
-                isloaded = false;
+                ////doesnt work very well
             });
+            */
         }	
     });  
 }
@@ -271,22 +279,37 @@ function killmpv(){
     cp.spawnSync('killall',['mpv']);
 }
 
-function playsong(songobj){
+function restartplayer(){
+    console.log("restarting mpv");
+    killmpv();
+    createNewPlayer();
+}
+
+async function playsong(songobj){
     if (songobj){
-        isloaded = true;
         //check if mpv is alive
         try {
             //load the file
             console.log("Loading: " + songobj.songfile);
-            player.loadfile(songobj.songfile, 'replace');
+            isloaded = false;
+            clearTimeout(sockettimeout);
+            sockettimeout = setTimeout(function() {
+              if (!isloaded){
+                  console.log("Player socket timed out");
+                  restartplayer();
+              }
+            }, 3000);
+            await player.loadfile(songobj.songfile, 'replace').then(
+                function (rtn) { isloaded = true; }, 
+                function (err) { console.log('loading file error: ' + err); }
+            );
             //unpause
-            player.play();
+            await player.play();
             //update all players
             io.sockets.emit('playlist', {playlist:playlist.getPlayList(), playing:playlist.getPlaying()});
         } catch(error) {
             console.log("Player is unresponsive, restarting mpv - error: " + error);
-            killmpv();
-            createNewPlayer();
+            restartplayer();
         }   
     } else {
         console.log("bad songobj + " + JSON.stringify(songobj));

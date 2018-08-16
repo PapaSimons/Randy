@@ -10,6 +10,7 @@ var templist = {};
 
 window.onload = function() {
     browsepane("zen");
+    $('#browse-pane').show();
     $('#browse-pane').addClass('mobilehideme');
 };
 
