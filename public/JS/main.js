@@ -2,6 +2,8 @@
 
 //console.clear();
 var cursong = null;
+var prevbrowserpanemode = null;
+var curbrowserpanemode = null;
 var scrolltosong = true;
 var seekbarreleased = true;
 var isplaying = false;
@@ -10,7 +12,7 @@ var templist = {};
 
 window.onload = function() {
     browsepane("zen");
-    $('#browse-pane').show();
+    //$('#browse-pane').show();
     $('#browse-pane').addClass('mobilehideme');
 };
 
@@ -44,13 +46,15 @@ $('#search-bar').keyup(function(event) {
                 var res = rtn.results;     
                 console.log(JSON.stringify(res));
                  var ht = "";
+                 ht += "<img class='clickable' onclick='browsepane(\"init\");' src='IMG/back_icon.png'/>";
                  if (res.albums.length > 0){
                      templist.searchalbums = [];
                      ht += "<h3>Albums</h3>";
                      for (i in res.albums){
-                         templist.searchalbums.push(res.albums[i].path);
+                         templist.searchalbums.push(res.albums[i].album);
                          ht += "<div class='search-result'>";
-                         ht += "<div class='search-result-name'>" + res.albums[i].name; 
+                         ht += "<div class='search-result-name' onclick='showAlbum(\"searchalbums\",\""+i+"\")'>";
+                         ht += "<span class='clickablelink'>" + res.albums[i].name + "</span>"; 
                          ht += "<span class='search-result-path'>" + res.albums[i].albumpath + "</span>";
                          ht += "</div>"; 
                          ht += "<div class='search-result-options'>" + songoptions('searchalbums',i) + "</div>";
@@ -87,12 +91,14 @@ $('#top-icon-menu').on('click', function(){
     console.log("menu press");
     $('#browse-pane').toggleClass('mobilehideme');
     $('#playlist-pane').toggleClass('mobilehideme');
+    $('.browse-top-back-icon').toggleClass('mobilehideme');
 });
 
 $('.browse-top-back-icon').on('click', function(){
     //case for mobile
     $('#browse-pane').toggleClass('mobilehideme');
     $('#playlist-pane').toggleClass('mobilehideme');
+    $('.browse-top-back-icon').toggleClass('mobilehideme');
 });
 
 
@@ -234,6 +240,8 @@ socket.on('playlist', function(objj){
 });
 
 function browsepane(mode){
+    prevbrowserpanemode = curbrowserpanemode;
+    curbrowserpanemode = mode;
     $('#browse-modes').children().hide();
     $('#browse-' + mode).fadeIn();
     $('#browse-search-url').hide();
@@ -256,6 +264,7 @@ function browsepane(mode){
             api.getStickyList().then(function(rtn){
                 var res = rtn.results;     
                 var ht = "";
+                ht += "<img class='clickable' onclick='browsepane(\"init\");' src='IMG/back_icon.png'/>";
                  if (res.length > 0){
                      templist.allstickies = [];
                      ht += "<h3>Sticky</h3>";
@@ -274,13 +283,15 @@ function browsepane(mode){
             api.getAlbums().then(function(rtn){
                 var res = rtn.results;     
                 var ht = "";
+                ht += "<img class='clickable' onclick='browsepane(\"init\");' src='IMG/back_icon.png'/>";
                  if (res.albums.length > 0){
                      templist.allalbums = [];
                      ht += "<h3>Albums</h3>";
                      for (i in res.albums){
-                         templist.allalbums.push(res.albums[i].path);
+                         templist.allalbums.push(res.albums[i].album);
                          ht += "<div class='search-result'>";
-                         ht += "<div class='search-result-name'>" + res.albums[i].name; 
+                         ht += "<div class='search-result-name' onclick='showAlbum(\"allalbums\",\""+i+"\")'>";
+                         ht += "<span class='clickablelink'>" + res.albums[i].name + "</span>"; 
                          ht += "<span class='search-result-path'>" + res.albums[i].albumpath + "</span>";
                          ht += "</div>"; 
                          ht += "<div class='search-result-options'>" + songoptions('allalbums',i) + "</div>";
@@ -288,6 +299,26 @@ function browsepane(mode){
                      }
                  }
                 $('#browse-files').html(ht); 
+            });
+            break;
+        case "album":
+            api.getAlbum(templist.curalbum).then(function(rtn){
+                var res = rtn.results;     
+                var ht = "";
+                ht += "<img class='clickable' onclick='browsepane(\""+prevbrowserpanemode+"\");' src='IMG/back_icon.png'/>";
+                 if (res.files.length > 0){
+                     templist.curalbumfiles = [];
+                     ht += "<h3>" + res.name + "</h3>";
+                     for (i in res.files){
+                        templist.curalbumfiles.push(res.files[i].path);
+                        ht += "<div class='search-result'>";
+                        ht += "<div class='search-result-name clickablelink' onclick='doSongOption(\"playnow\",\"curalbumfiles\",\""+i+"\")'>" + res.files[i].name + "</div>"; 
+                        ht += "<div class='search-result-options'>" + songoptions('curalbumfiles',i) + "</div>";
+                        ht += "</div>";
+                         
+                     }
+                 }
+                $('#browse-album').html(ht); 
             });
             break;
         case "init":
@@ -314,9 +345,10 @@ function browsepane(mode){
                      templist.initralbums = [];
                      ht += "<h3>Albums</h3>";
                      for (i in res.albums){
-                         templist.initralbums.push(res.albums[i].path);
+                         templist.initralbums.push(res.albums[i].album);
                          ht += "<div class='search-result'>";
-                         ht += "<div class='search-result-name'>" + res.albums[i].name; 
+                         ht += "<div class='search-result-name' onclick='showAlbum(\"initralbums\",\""+i+"\")'>";
+                         ht += "<span class='clickablelink'>" + res.albums[i].name + "</span>"; 
                          ht += "<span class='search-result-path'>" + res.albums[i].albumpath + "</span>";
                          ht += "</div>"; 
                          ht += "<div class='search-result-options'>" + songoptions('initralbums',i) + "</div>";
@@ -352,6 +384,19 @@ $("#dial").knob({
 $("#seekdial").bind("mousedown touchstart" ,function() {
     seekbarreleased = false;
 });
+
+function changemf(){
+    var mf = $('#mf_inp').val();
+    if (mf !== ''){
+        api.setMusicFolder($('#mf_inp').val());
+    }
+}
+
+//album view//
+function showAlbum(list,i){
+    templist.curalbum = templist[list][i];
+    browsepane('album');
+}
 
 //song options//
 function songoptions(obj,i){

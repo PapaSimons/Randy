@@ -32,6 +32,12 @@ main{
     opacity: 1; /* Firefox */
 }
 
+h3 {
+    color: #B9B8B8;
+    font-weight: normal;
+    font-size: 1em;
+}
+
 .clickable{
     cursor: pointer;
     transition: all .2s ease;
@@ -67,7 +73,6 @@ main{
     height:100%;
     width: 100%;
     min-width: 0px;
-    display: none;
 }
 
 #browse-zen{
@@ -113,15 +118,24 @@ main{
     background-color: white;
 }
 
+.settings-inp{
+    padding:6px 10px;
+    border-radius: 3px;
+    border: 0px;
+    background-color: white;
+    width: 300px;
+    max-width: 90%;
+}
+
 .browse-top-menu-icon {
     vertical-align: middle;
     margin-left: 15px;
+    height:23px;
 }
 
 .browse-top-back-icon{
     display: none;
     vertical-align: middle;
-    margin-right: 15px;
 }
 
 #browse-search-url {
@@ -365,7 +379,7 @@ main{
   border-radius: 10px;
   background-position: center;
   background-repeat: no-repeat;
-  background-size: 20px;
+  background-size: 15px;
     margin-top: 65px;
   background-color: #fff;
   cursor: pointer;
@@ -440,8 +454,21 @@ main{
         display: none;
     }
     
+    .browse-top-back-icon.mobilehideme{
+        display: inline;
+    }
+    
+    .browse-top-menu {
+        display: block;
+    }
+    
+    #search-bar{
+        width:90%;
+        margin-top: 10px;
+    }
+    
     .browse-top-back-icon{
-        display: block;   
+        display: none;  
     }
     
 }

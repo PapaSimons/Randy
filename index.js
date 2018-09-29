@@ -17,6 +17,7 @@ var createPlayer = require('./lib/mpv-wrapper');
 var metaget = require("metaget");
 var cp = require('child_process');
 var WatchJS = require("melanke-watchjs");
+var fs = require("fs");
 
 //vars
 var player = null;
@@ -50,11 +51,32 @@ app.post('/getAlbums', function (req, res) {
     res.json({"results":playlist.getAlbums(req.body.limit)});
 });
 
+app.post('/getAlbum', function (req, res) {
+    res.header("Access-Control-Allow-Origin", "http://localhost");
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+    //return
+    console.log("get album: " + req.body.albumdir);
+    res.json({"results":playlist.getAlbum(req.body.albumdir)});
+});
+
 app.post('/getRandomAlbums', function (req, res) {
     res.header("Access-Control-Allow-Origin", "http://localhost");
     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
     //return
     res.json({"results":playlist.getRandomAlbums(req.body.limit)});
+});
+
+app.post('/setMusicFolder', function (req, res) {
+    res.header("Access-Control-Allow-Origin", "http://localhost");
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+    //return
+    playlist.setMusicFolder(req.body.mf).then(function(fsong){
+        playsong(fsong);
+        res.json({"success":200});
+    }, function (err){
+        res.json({"success":err});
+    });
+    
 });
 
 app.post('/searchSongs', function (req, res) {
@@ -92,9 +114,9 @@ io.on('connection', function(socket){
     console.log('a user connected');
     
     if (playlist.getPlayList().length > 0){
-    psocket.emit('playlist', {playlist:playlist.getPlayList(), playing:playlist.getPlaying()});
-    var curs = playlist.getCurrentSong();
-    psocket.emit('nowplaying', {title:curs.tags.common.title, albumart:curs.albumart});
+        psocket.emit('playlist', {playlist:playlist.getPlayList(), playing:playlist.getPlaying()});
+        var curs = playlist.getCurrentSong();
+        psocket.emit('nowplaying', {title:curs.tags.common.title, albumart:curs.albumart});
     }
     
     socket.on('play', function(msg){
@@ -128,32 +150,15 @@ io.on('connection', function(socket){
     });
     
     socket.on('playnow', function(msg){
-      console.log('playnow');
-      //check for albums
-      if (Array.isArray(msg)){
-          for (i = 0; i < msg.length; i++){
-              playlist.addandplay(msg[i]).then(function(p){
-                  if (i == 0){
-                    playsong(p);
-                  }
-              });
-          }
-      } else {
-          playlist.addandplay(msg).then(function(p){
-              playsong(p);
-          });
-      }
+      console.log('playnow - ' + msg);
+      playlist.addandplay(msg).then(function(p){
+          playsong(p);
+      });
     });
     
     socket.on('addtolist', function(msg){
-      console.log('addtolist');
-        if (Array.isArray(msg)){
-          for (i = 0; i < msg.length; i++){
-              playlist.addlast(msg[i]);
-          }
-      } else {
-          playlist.addlast(msg);
-      }
+      console.log('addtolist - ' + msg);
+      playlist.addlast(msg);
     });
     
     socket.on('stick', function(msg){
@@ -164,6 +169,7 @@ io.on('connection', function(socket){
 });
 
 ///--- Public web ui folder ---///
+
 app.use("/", express.static(__dirname + "/public"));
 
 //start server//
@@ -183,6 +189,7 @@ function initRandy(){
         playlist.initPlaylist(3).then(function(fsong){
             //watch the playlist
             watch(playlist.getPlayList(), function(){
+                console.log('playlist changed ' + playlist.getPlaying());
                 io.sockets.emit('playlist', {playlist:playlist.getPlayList(), playing:playlist.getPlaying()});
             });
             if (player != null){
@@ -286,27 +293,29 @@ function restartplayer(){
 }
 
 async function playsong(songobj){
-    if (songobj){
+    if (songobj !== null){
         //check if mpv is alive
         try {
-            //load the file
-            console.log("Loading: " + songobj.songfile);
-            isloaded = false;
-            clearTimeout(sockettimeout);
-            sockettimeout = setTimeout(function() {
-              if (!isloaded){
-                  console.log("Player socket timed out");
-                  restartplayer();
-              }
-            }, 3000);
-            await player.loadfile(songobj.songfile, 'replace').then(
-                function (rtn) { isloaded = true; }, 
-                function (err) { console.log('loading file error: ' + err); }
-            );
-            //unpause
-            await player.play();
-            //update all players
-            io.sockets.emit('playlist', {playlist:playlist.getPlayList(), playing:playlist.getPlaying()});
+            if (songobj.hasOwnProperty('songfile')){
+                //load the file
+                console.log("Loading: " + songobj.songfile);
+                isloaded = false;
+                clearTimeout(sockettimeout);
+                sockettimeout = setTimeout(function() {
+                  if (!isloaded){
+                      console.log("Player socket timed out");
+                      restartplayer();
+                  }
+                }, 3000);
+                await player.loadfile(songobj.songfile, 'replace').then(
+                    function (rtn) { isloaded = true; }, 
+                    function (err) { console.log('loading file error: ' + err); }
+                );
+                //unpause
+                await player.play();
+                //update all players
+                io.sockets.emit('playlist', {playlist:playlist.getPlayList(), playing:playlist.getPlaying()});
+            }
         } catch(error) {
             console.log("Player is unresponsive, restarting mpv - error: " + error);
             restartplayer();
