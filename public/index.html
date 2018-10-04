@@ -9,6 +9,9 @@
       <script src='JS/jquery-3.3.1.min.js'></script>
       <!-- base CSS -->
       <link rel="stylesheet" href="CSS/basecss.css">
+      <!-- loading buttons -->
+      <link rel="stylesheet" href="CSS/loading-btn.css">
+      <link rel="stylesheet" href="CSS/loading.css">
   </head>
   <body>
       <main>
@@ -18,11 +21,11 @@
               </div>
               <div id="browse-home">
                   <div class="browse-top-menu">  
-                    <img class='browse-top-back-icon clickable' src="IMG/back_icon.png"/>
+                      <input id="search-bar" placeholder="weburls or keywords.." type="text"/>
+                      <span class='browse-top-back-icon clickable'>&lt;</span>
                     <img class="browse-top-menu-icon clickable" onclick="browsepane('files');" src="IMG/icon_folder.png"/>
                     <img class="browse-top-menu-icon clickable" id="stickybutt" onclick="browsepane('stickies');" src="IMG/icon_lovehol.png"/>
                     <img class="browse-top-menu-icon clickable" onclick="browsepane('settings');" src="IMG/icon_settings.png"/>
-                    <input id="search-bar" placeholder="weburls or keywords.." type="text"/>
                   </div>
                   <div id="browse-search-url">
                       &nbsp;
@@ -43,9 +46,17 @@
                       &nbsp;
                     </div>
                     <div id="browse-settings">
+                        <div class="settings-intro">
+                            Start by <b>setting up your music folder</b></br>
+                            Or insert links to web streaming sources such as youtube videos, soundcloud songs or web radios into the search bar.
+                        </div>
                         <h3>Settings</h3>
+                        <div id="mf_err" class="settings-err"></div>
                         <input class='settings-inp' type="text" id='mf_inp' placeholder="Path to music folder"/>
-                        <button onclick="changemf()">Change</button>
+                        <span id="mf_but" class="settings-butt ld-ext-right" onclick="changemf()">
+                          Change
+                          <div class="ld ld-ring ld-spin"></div>
+                        </span>
                     </div>
                     <div id="browse-album">  
                       &nbsp;

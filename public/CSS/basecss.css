@@ -73,6 +73,7 @@ h3 {
     height:100%;
     width: 100%;
     min-width: 0px;
+    visibility: hidden;
 }
 
 #browse-zen{
@@ -124,7 +125,32 @@ h3 {
     border: 0px;
     background-color: white;
     width: 300px;
-    max-width: 90%;
+    max-width: 65%;
+}
+
+.settings-butt{
+    padding:6px 10px;
+    border-radius: 3px;
+    border: 1px solid black;
+    background-color: grey;
+    color: white;
+    max-width: 30%;
+    margin-left: 10px;
+}
+
+.settings-err{
+    font-size: 0.8em;
+    color:red;
+    margin-bottom: 5px;
+}
+
+.settings-intro{
+    background:#aaa;
+    padding:10px;
+    border-radius: 10px;
+    margin-bottom:10px;
+    font-size: 0.85em;
+    max-width: 80%;
 }
 
 .browse-top-menu-icon {
@@ -136,6 +162,8 @@ h3 {
 .browse-top-back-icon{
     display: none;
     vertical-align: middle;
+    font-size:2em;
+    color:#cdc;
 }
 
 #browse-search-url {
@@ -464,7 +492,7 @@ h3 {
     
     #search-bar{
         width:90%;
-        margin-top: 10px;
+        margin-bottom: 10px;
     }
     
     .browse-top-back-icon{

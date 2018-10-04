@@ -18,7 +18,7 @@
     "melanke-watchjs": "^1.4.3",
     "metaget": "^1.0.6",
     "mpv-wrapper": "^0.1.0",
-    "music-metadata": "^2.6.0",
+    "music-metadata": "^2.8.1",
     "simple-json-db": "^1.2.1",
     "socket.io": "^2.1.1"
   }

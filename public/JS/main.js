@@ -9,10 +9,13 @@ var seekbarreleased = true;
 var isplaying = false;
 var ispausing = false;
 var templist = {};
+var musicfolderatinit = true;
 
 window.onload = function() {
-    browsepane("zen");
-    //$('#browse-pane').show();
+    if (musicfolderatinit){
+        browsepane("zen");
+    }
+    $('#browse-pane').css("visibility","visible");
     $('#browse-pane').addClass('mobilehideme');
 };
 
@@ -82,7 +85,7 @@ $('#search-bar').keyup(function(event) {
 });
 
 $('#top-icon-menu').on('click', function(){
-    if ($('#browse-init').is(":visible")){
+    if (!$('#browse-zen').is(":visible")){
         browsepane("zen");
     } else {
         browsepane("init");
@@ -132,6 +135,12 @@ function playsong(id){
 
 var socket = io();
 
+socket.on('nomusicfolder', function(obj){
+    console.log("no music folder");
+    musicfolderatinit = false;
+    browsepane("settings");
+});
+
 socket.on('duration', function(obj){
     //console.log("got new duration: " + obj);
     cursong.find('.onesong-len').attr("len",obj);
@@ -161,7 +170,7 @@ socket.on('pos', function(obj){
 
 socket.on('nowplaying', function(obj){
     console.log("now playing: " + obj.title + " album art - " + JSON.stringify(obj.albumart));
-    if (!ValidURL(obj.albumart)){
+    if (!ValidAAURL(obj.albumart)){
         obj.albumart = 'IMG/Elephant_Walking_animated.gif';
     }
     if (cursong != null){
@@ -173,10 +182,10 @@ socket.on('nowplaying', function(obj){
         if ($('#browse-zen').find("img").attr("src") != obj.albumart){
             if ($('#browse-zen').is(":hidden")){
                 $('.album-art').css("background-image", 
-                                    'url("' + (ValidURL(obj.albumart) ? obj.albumart : 'IMG/Record.png') + '")');
+                                    'url("' + (ValidAAURL(obj.albumart) ? obj.albumart : 'IMG/Record.png') + '")');
                 $('#browse-zen').html(newimg);
             } else {
-                $('#browse-zen').hide().html(newimg).fadeIn(100);
+                $('#browse-zen').hide().html(newimg).fadeIn(400);
             }
         }
     }
@@ -242,6 +251,7 @@ socket.on('playlist', function(objj){
 function browsepane(mode){
     prevbrowserpanemode = curbrowserpanemode;
     curbrowserpanemode = mode;
+    console.log("change mode to: " + mode);
     $('#browse-modes').children().hide();
     $('#browse-' + mode).fadeIn();
     $('#browse-search-url').hide();
@@ -358,6 +368,9 @@ function browsepane(mode){
                 $('.browse-init-randomalbums').html(ht); 
             });
         break;
+        case "settings":
+            console.log('in settings');
+        break;
     }
 }
 
@@ -387,8 +400,15 @@ $("#seekdial").bind("mousedown touchstart" ,function() {
 
 function changemf(){
     var mf = $('#mf_inp').val();
+    $("#mf_err").html("");
     if (mf !== ''){
-        api.setMusicFolder($('#mf_inp').val());
+        $("#mf_but").addClass("running");
+        api.setMusicFolder($('#mf_inp').val()).then(function(ret){
+            $("#mf_but").removeClass("running");
+            if (ret.success !== 200){
+                $("#mf_err").html("Try another folder");
+            }
+        });;
     }
 }
 
@@ -445,6 +465,10 @@ function secondsToHms(t) {
 function ValidURL(str) {
   regexp =  /^(?:(?:https?|ftp):\/\/)?(?:(?!(?:10|127)(?:\.\d{1,3}){3})(?!(?:169\.254|192\.168)(?:\.\d{1,3}){2})(?!172\.(?:1[6-9]|2\d|3[0-1])(?:\.\d{1,3}){2})(?:[1-9]\d?|1\d\d|2[01]\d|22[0-3])(?:\.(?:1?\d{1,2}|2[0-4]\d|25[0-5])){2}(?:\.(?:[1-9]\d?|1\d\d|2[0-4]\d|25[0-4]))|(?:(?:[a-z\u00a1-\uffff0-9]-*)*[a-z\u00a1-\uffff0-9]+)(?:\.(?:[a-z\u00a1-\uffff0-9]-*)*[a-z\u00a1-\uffff0-9]+)*(?:\.(?:[a-z\u00a1-\uffff]{2,})))(?::\d{2,5})?(?:\/\S*)?$/;
   return regexp.test(str);
+}
+
+function ValidAAURL(str){
+    return (ValidURL(str) || str.indexOf("/mnt/") == 0);
 }
 
 function Bounce(ele) {

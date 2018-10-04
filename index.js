@@ -69,8 +69,10 @@ app.post('/getRandomAlbums', function (req, res) {
 app.post('/setMusicFolder', function (req, res) {
     res.header("Access-Control-Allow-Origin", "http://localhost");
     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+    console.log("setting music folder to: " + req.body.mf);
     //return
     playlist.setMusicFolder(req.body.mf).then(function(fsong){
+        app.use("/mnt/", express.static(req.body.mf));
         playsong(fsong);
         res.json({"success":200});
     }, function (err){
@@ -112,6 +114,12 @@ io.on('connection', function(socket){
     psocket = socket;
     
     console.log('a user connected');
+    
+    //check initial settings
+    var sett = playlist.getSettings();
+    if (sett.musicfolder == null || !fs.existsSync(sett.musicfolder)){
+        io.sockets.emit('nomusicfolder', null);
+    }
     
     if (playlist.getPlayList().length > 0){
         psocket.emit('playlist', {playlist:playlist.getPlayList(), playing:playlist.getPlaying()});
@@ -184,20 +192,33 @@ console.log("Welcome to Randy - localhost:8888 - !");
 function initRandy(){
     //kill previous mpv instances
     killmpv();
-    //load playlist
-    playlist.getAllSongs().then(function(){
-        playlist.initPlaylist(3).then(function(fsong){
-            //watch the playlist
-            watch(playlist.getPlayList(), function(){
-                console.log('playlist changed ' + playlist.getPlaying());
-                io.sockets.emit('playlist', {playlist:playlist.getPlayList(), playing:playlist.getPlaying()});
+    //check music folder
+    var sett = playlist.getSettings();
+    if (sett.musicfolder == null || !fs.existsSync(sett.musicfolder)){
+        console.log("No music folder found");
+        io.sockets.emit('nomusicfolder', null);
+    } else {
+        //for serving cover art files (potentially streaming in future)
+        app.use("/mnt/", express.static(sett.musicfolder));
+        //load playlist
+        playlist.getAllSongs().then(function(){
+            playlist.initPlaylist(3).then(function(fsong){
+                //watch the playlist
+                watch(playlist.getPlayList(), function(){
+                    console.log('playlist changed ' + playlist.getPlaying());
+                    io.sockets.emit('playlist', {playlist:playlist.getPlayList(), playing:playlist.getPlaying()});
+                });
+                if (player != null){
+                    console.log("loading first song - " + fsong.songfile);
+                    playsong(fsong); 
+                }
+            }).then(function(err){
+               console.log("error while initing playlist - " + err); 
             });
-            if (player != null){
-                console.log("loading first song - " + fsong.songfile);
-                playsong(fsong); 
-            }
+        }).then(function(err){
+           console.log("error while getting all songs - " + err); 
         });
-    });
+    }
     //create the player instance
     createNewPlayer();
 }
@@ -218,7 +239,8 @@ process.on('uncaughtException', function (err) {
 function createNewPlayer(){
     //create player instance
     //createPlayer(['--no-video']).then(function(newplayer){
-    createPlayer({ args: ['--no-video'] }, (err, newplayer) => {
+     createPlayer({ args: ['--af-clr','--vf-clr','--vid=no',] }, (err, newplayer) => {
+     //createPlayer({ args: [''] }, (err, newplayer) => {
         if (err) {
             console.error("Error creating player - " + err);
         } else {
