@@ -16,7 +16,7 @@ var playlist = require('./lib/playlist_utils.js');
 var createPlayer = require('./lib/mpv-wrapper');
 var metaget = require("metaget");
 var cp = require('child_process');
-var WatchJS = require("melanke-watchjs");
+var observe = require('smart-observe');
 var fs = require("fs");
 
 //vars
@@ -25,7 +25,6 @@ var psocket = null;
 var port = process.env.PORT || 8888;
 var isloaded = false;
 var sockettimeout = null;
-var watch = WatchJS.watch;
 var seekable = true;
 
 //express parsing support
@@ -33,6 +32,10 @@ app.use(bodyParser.json()); // to support JSON-encoded bodies
 app.use(bodyParser.urlencoded({
     extended: true
 })); // to support URL-encoded bodies
+
+///--- Public web ui folder ---///
+
+app.use("/", express.static(__dirname + "/public"));
 
 ///--- APIs Exposed ---///
 
@@ -63,16 +66,20 @@ app.post('/getRandomAlbums', function (req, res) {
     res.header("Access-Control-Allow-Origin", "http://localhost");
     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
     //return
-    res.json({"results":playlist.getRandomAlbums(req.body.limit)});
+    console.log();
+    playlist.getRandomAlbums(req.body.limit).then(function(results){
+        res.json({"results":results});
+    });
+    
 });
 
 app.post('/setMusicFolder', function (req, res) {
     res.header("Access-Control-Allow-Origin", "http://localhost");
     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
-    console.log("setting music folder to: " + req.body.mf);
+    console.log("setting music folders to: " + req.body.mf);
     //return
     playlist.setMusicFolder(req.body.mf).then(function(fsong){
-        app.use("/mnt/", express.static(req.body.mf));
+        initmf(req.body.mf);
         playsong(fsong);
         res.json({"success":200});
     }, function (err){
@@ -116,8 +123,7 @@ io.on('connection', function(socket){
     console.log('a user connected');
     
     //check initial settings
-    var sett = playlist.getSettings();
-    if (sett.musicfolder == null || !fs.existsSync(sett.musicfolder)){
+    if (!checkmf()){
         io.sockets.emit('nomusicfolder', null);
     }
     
@@ -174,49 +180,52 @@ io.on('connection', function(socket){
       playlist.addtosticky(msg);
     });
     
+    socket.on('randy', function(msg){
+      console.log('randy');
+      playlist.randy().then(function(p){
+          playsong(p);
+      }); 
+    });
+    
 });
 
-///--- Public web ui folder ---///
+//--- start server ---///
 
-app.use("/", express.static(__dirname + "/public"));
-
-//start server//
 http.listen(port, function(){
-  console.log("Randy on port " + port);
-});
-
+    console.log("Randy on port " + port);
+  });
+  
 console.log("Welcome to Randy - localhost:8888 - !");
-
+  
 ////--- init the player ---////
 
 function initRandy(){
     //kill previous mpv instances
     killmpv();
     //check music folder
-    var sett = playlist.getSettings();
-    if (sett.musicfolder == null || !fs.existsSync(sett.musicfolder)){
+    if (!checkmf()){
         console.log("No music folder found");
         io.sockets.emit('nomusicfolder', null);
     } else {
         //for serving cover art files (potentially streaming in future)
-        app.use("/mnt/", express.static(sett.musicfolder));
+        initmf();
         //load playlist
         playlist.getAllSongs().then(function(){
             playlist.initPlaylist(3).then(function(fsong){
                 //watch the playlist
-                watch(playlist.getPlayList(), function(){
+                observe(playlist.getPlobj(),'randylist', function(n,o){
                     console.log('playlist changed ' + playlist.getPlaying());
                     io.sockets.emit('playlist', {playlist:playlist.getPlayList(), playing:playlist.getPlaying()});
                 });
                 if (player != null){
-                    console.log("loading first song - " + fsong.songfile);
+                    //console.log("initPlaylist - loading first song - " + fsong.songfile);
                     playsong(fsong); 
                 }
             }).then(function(err){
-               console.log("error while initing playlist - " + err); 
+               //console.log("error while initing playlist - " + err); 
             });
         }).then(function(err){
-           console.log("error while getting all songs - " + err); 
+           //console.log("error while getting all songs - " + err); 
         });
     }
     //create the player instance
@@ -239,8 +248,7 @@ process.on('uncaughtException', function (err) {
 function createNewPlayer(){
     //create player instance
     //createPlayer(['--no-video']).then(function(newplayer){
-     createPlayer({ args: ['--af-clr','--vf-clr','--vid=no',] }, (err, newplayer) => {
-     //createPlayer({ args: [''] }, (err, newplayer) => {
+    createPlayer({ args: ['--af-clr','--vf-clr','--vid=no'] }, (err, newplayer) => {
         if (err) {
             console.error("Error creating player - " + err);
         } else {
@@ -312,6 +320,26 @@ function restartplayer(){
     console.log("restarting mpv");
     killmpv();
     createNewPlayer();
+}
+
+function checkmf(){
+    var mf = playlist.getSettings().musicfolders;
+    if (mf == null){ 
+        return false;
+    }
+    for (i = 0; i < mf.length; i++){
+        if (!fs.existsSync(mf[i])){
+            return false;
+        }
+    }
+    return true;
+}
+
+function initmf(){
+    var mf = playlist.getSettings().musicfolders;
+    for (i = 0; i < mf.length; i++){
+        app.use("/mnt/", express.static(mf[i]));
+    }
 }
 
 async function playsong(songobj){

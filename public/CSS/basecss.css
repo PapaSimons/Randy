@@ -111,6 +111,13 @@ h3 {
     display: flex;
 }
 
+.browse-init-randomalbums img {
+    width: 23%;
+    margin-right: 12px;
+    margin-top: 10px;
+    cursor: pointer;
+}
+
 #search-bar {
     flex: 1;
     padding:6px 10px;
@@ -136,6 +143,7 @@ h3 {
     color: white;
     max-width: 30%;
     margin-left: 10px;
+    cursor:pointer;
 }
 
 .settings-err{
@@ -176,6 +184,14 @@ h3 {
 .browse-search-img img{
     flex: 50%;
     width:200px;
+}
+
+.browse-search-x {
+    font-size: 1.3em;
+    cursor:pointer;
+    text-align: right;
+    margin-right: 15px;
+    font-weight: bold;
 }
 
 #browse-search-url .song-options {
@@ -267,6 +283,7 @@ h3 {
     margin-right: 30px;
     font-size: 1.2em;
     color:red;
+    cursor: pointer;
 }
 
 #playlist-pane-songlist {
@@ -365,7 +382,7 @@ h3 {
   height: 246px;
   width: 246px;
   border-radius: 50%;
-  transition: all .5s ease;
+  /*transition: all .5s ease;*/
   z-index: 6;
   background-position: top;
   background-color: lightgoldenrodyellow;
@@ -380,7 +397,7 @@ h3 {
     z-index: 5;
     overflow:hidden;
 }
-
+/*
 #playlist-pane-player .control-panel.active .album-art {
   animation: rotation 3s infinite linear;
   -webkit-animation: rotation 3s infinite linear;
@@ -393,6 +410,7 @@ h3 {
     transform: rotate(360deg);
   }
 }
+*/
 #playlist-pane-player .control-panel .controls {
   display: flex;
   justify-content:center;

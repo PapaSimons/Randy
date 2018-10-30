@@ -10,6 +10,7 @@ var isplaying = false;
 var ispausing = false;
 var templist = {};
 var musicfolderatinit = true;
+var rot = 0;
 
 window.onload = function() {
     if (musicfolderatinit){
@@ -19,13 +20,24 @@ window.onload = function() {
     $('#browse-pane').addClass('mobilehideme');
 };
 
+var rotateAnime = anime({
+    targets: '.album-art',
+    rotate:'1turn',
+    duration:3500,
+    easing:'linear',
+    elasticity:0,
+    loop: true,
+    autoplay: false // prevent the instance from playing
+  });
+
 $('#search-bar').keyup(function(event) {
     if (ValidURL($('#search-bar').val())){
         api.getURLMeta($('#search-bar').val()).then(function(meta){
            if (meta.title){
                templist.search = [$('#search-bar').val()];
                console.log(JSON.stringify(meta));
-                var ht = "<div class='browse-search-img'>";
+                var ht = "<div class='browse-search-x' onclick='$(\"#browse-search-url\").hide();'>X</div>";
+                ht += "<div class='browse-search-img'>";
                 ht += "<img src='" + meta.img + "'/>";
                 ht += "</div>";
                 ht += "<div class='browse-search-tit'>";
@@ -84,6 +96,11 @@ $('#search-bar').keyup(function(event) {
     return true;
 });
 
+$('#top-text').on('click', function(){
+   //api.randy(); 
+   socket.emit('randy', '');
+});
+
 $('#top-icon-menu').on('click', function(){
     if (!$('#browse-zen').is(":visible")){
         browsepane("zen");
@@ -112,7 +129,7 @@ $('#play').on('click', function(){
         ispausing = true;
         console.log('emitting pause');
         socket.emit('pause', '');
-        $('#control-panel').removeClass('active');
+        //$('#control-panel').removeClass('active');
     } else {
         ispausing = false;
         console.log('emitting play');
@@ -149,10 +166,15 @@ socket.on('duration', function(obj){
 socket.on('pos', function(obj){
     if (!ispausing){
         isplaying = true;
-        //rotate
-        if (!$('#control-panel').hasClass('active')){
-            $('#control-panel').addClass('active');
+    }
+    if (isplaying){
+        if (rotateAnime.paused){
+            console.log("ani start");
+            rotateAnime.play();
         }
+    } else {
+        console.log("ani stop");
+        rotateAnime.pause();
     }
     var lenel = cursong.find('.onesong-len');
     var tlen = parseInt(lenel.attr("len"));
@@ -170,19 +192,20 @@ socket.on('pos', function(obj){
 
 socket.on('nowplaying', function(obj){
     console.log("now playing: " + obj.title + " album art - " + JSON.stringify(obj.albumart));
-    if (!ValidAAURL(obj.albumart)){
-        obj.albumart = 'IMG/Elephant_Walking_animated.gif';
+    var al = encodeURI(obj.albumart);
+    if (!ValidAAURL(al)){
+        al = 'IMG/Elephant_Walking_animated.gif';
     }
     if (cursong != null){
         cursong.find(".onesong-tit").html(obj.title);
         if (obj.hasOwnProperty('album')){
-            cursong.find(".onesong-artist").html(obj.album);
+            cursong.find(".onesong-artist").html(al);
         }
-        var newimg = "<img class='album-cover-pane' src='" + obj.albumart + "'/>";
-        if ($('#browse-zen').find("img").attr("src") != obj.albumart){
+        var newimg = "<img class='album-cover-pane' src=\"" + al + "\"/>";
+        if ($('#browse-zen').find("img").attr("src") != al){
             if ($('#browse-zen').is(":hidden")){
                 $('.album-art').css("background-image", 
-                                    'url("' + (ValidAAURL(obj.albumart) ? obj.albumart : 'IMG/Record.png') + '")');
+                                    'url("' + (ValidAAURL(al) ? al : 'IMG/Record.png') + '")');
                 $('#browse-zen').html(newimg);
             } else {
                 $('#browse-zen').hide().html(newimg).fadeIn(400);
@@ -348,7 +371,7 @@ function browsepane(mode){
                  }
                 $('.browse-init-sticky').html(ht); 
             });
-            api.getRandomAlbums(5).then(function(rtn){
+            api.getRandomAlbums(8).then(function(rtn){
                 var res = rtn.results;     
                 var ht = "";
                  if (res.albums.length > 0){
@@ -356,13 +379,7 @@ function browsepane(mode){
                      ht += "<h3>Albums</h3>";
                      for (i in res.albums){
                          templist.initralbums.push(res.albums[i].album);
-                         ht += "<div class='search-result'>";
-                         ht += "<div class='search-result-name' onclick='showAlbum(\"initralbums\",\""+i+"\")'>";
-                         ht += "<span class='clickablelink'>" + res.albums[i].name + "</span>"; 
-                         ht += "<span class='search-result-path'>" + res.albums[i].albumpath + "</span>";
-                         ht += "</div>"; 
-                         ht += "<div class='search-result-options'>" + songoptions('initralbums',i) + "</div>";
-                         ht += "</div>";
+                         ht += "<img src=\"" + encodeURI(res.albums[i].albumArt) + "\" onclick='doSongOption(\"playnow\",\"initralbums\",\""+i+"\")'/>";
                      }
                  }
                 $('.browse-init-randomalbums').html(ht); 
@@ -403,7 +420,7 @@ function changemf(){
     $("#mf_err").html("");
     if (mf !== ''){
         $("#mf_but").addClass("running");
-        api.setMusicFolder($('#mf_inp').val()).then(function(ret){
+        api.setMusicFolder([$('#mf_inp').val()]).then(function(ret){
             $("#mf_but").removeClass("running");
             if (ret.success !== 200){
                 $("#mf_err").html("Try another folder");
@@ -425,7 +442,7 @@ function songoptions(obj,i){
         ht += "<img class='clickable' onclick='doSongOption(\"playnow\",\""+obj+"\",\""+i+"\")' src='IMG/icon_playnow.png'/>";
     }
     ht += "<img class='clickable' onclick='doSongOption(\"addtolist\",\""+obj+"\",\""+i+"\")' src='IMG/icon_plus.png'/>";
-    if (obj.indexOf("stickies") == -1 && obj.indexOf("album") == -1){
+    if (obj.indexOf("stickies") == -1){
         ht += "<img class='clickable' onclick='doSongOption(\"stick\",\""+obj+"\",\""+i+"\")' src='IMG/icon_love.png'/>";
     }
     ht += "</div>";

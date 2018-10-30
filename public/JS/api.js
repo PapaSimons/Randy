@@ -1,6 +1,12 @@
 var api = {
     /* host url */
     hurl:window.location.origin + "/",
+    randy: function (u){
+        return $.ajax({
+            method: "POST",
+            url: api.hurl + "randy"
+        });
+    },
     getURLMeta: function (u){
         return $.ajax({
             method: "POST",

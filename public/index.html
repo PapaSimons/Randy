@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="manifest" href="/manifest.json">
     <title>Randy</title>
       <!-- JS -->
       <script src='JS/socket.io.js'></script>
@@ -100,9 +101,19 @@
       </main>  
       <script src="JS/api.js"></script>
       <script src='JS/jquery.knob.min.js'></script>
-      <script src='JS/velocity.min.js'></script>
+      <script src='JS/anime.min.js'></script>
       <script src='JS/sortable.js'></script>
       <script src='JS/main.js'></script>
   </body>
+  <script>
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('service.js')
+          .then(function(reg){
+            console.log("serviceWorker loaded");
+          }).catch(function(err) {
+            console.log("serviceWorker error: ", err)
+          });
+      }
+    </script>
 </html>
 
