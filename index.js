@@ -154,12 +154,12 @@ io.on('connection', function(socket){
     });
     
     socket.on('playsong', function(msg){
-      console.log('playsong');
+      console.log('playsong - ' + msg);
       playsong(playlist.playsong(msg));
     });
     
     socket.on('seek', function(msg){
-      console.log('seek');
+      console.log('seek - ' + msg);
       player.seek(msg, 'absolute');
     });
     
@@ -176,7 +176,7 @@ io.on('connection', function(socket){
     });
     
     socket.on('stick', function(msg){
-      console.log('stick');
+      console.log('stick - ' + msg);
       playlist.addtosticky(msg);
     });
     
@@ -274,9 +274,11 @@ function createNewPlayer(){
             //player.observeProperty('audio-params', t => console.log('audio-params: ' + JSON.stringify(t)));
             player.observeProperty('media-title', function(t){
                 isloaded = true;
-                var curs = playlist.getCurrentSong();
-                console.log('Title changed: ' + t);
-                io.sockets.emit('nowplaying', {title:t,albumart:curs.albumart});
+                if (t != null){
+                    var curs = playlist.getCurrentSong();
+                    console.log('Title changed: ' + t);
+                    io.sockets.emit('nowplaying', {title:t,albumart:curs.albumart});
+                }
             });
             player.observeProperty('metadata', function(t){
                 //console.log('metadata: ' + JSON.stringify(t));
@@ -342,6 +344,10 @@ function initmf(){
     }
 }
 
+function timeout(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+} 
+
 async function playsong(songobj){
     if (songobj !== null){
         //check if mpv is alive
@@ -350,6 +356,7 @@ async function playsong(songobj){
                 //load the file
                 console.log("Loading: " + songobj.songfile);
                 isloaded = false;
+                //test for socket timeout
                 clearTimeout(sockettimeout);
                 sockettimeout = setTimeout(function() {
                   if (!isloaded){

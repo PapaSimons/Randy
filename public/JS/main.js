@@ -11,6 +11,8 @@ var ispausing = false;
 var templist = {};
 var musicfolderatinit = true;
 var rot = 0;
+var lastpos = -1;
+var lastposupdate = -1;
 
 window.onload = function() {
     if (musicfolderatinit){
@@ -101,17 +103,21 @@ $('#top-text').on('click', function(){
    socket.emit('randy', '');
 });
 
+$('#top-icon-menu-mobile').on('click', function(){
+    console.log("mobile menu press");
+    browsepane("init");
+    $('#browse-pane').toggleClass('mobilehideme');
+    $('#playlist-pane').toggleClass('mobilehideme');
+    $('.browse-top-back-icon').toggleClass('mobilehideme');
+});
+
 $('#top-icon-menu').on('click', function(){
+    console.log("menu press");
     if (!$('#browse-zen').is(":visible")){
         browsepane("zen");
     } else {
         browsepane("init");
     }
-    //case for mobile
-    console.log("menu press");
-    $('#browse-pane').toggleClass('mobilehideme');
-    $('#playlist-pane').toggleClass('mobilehideme');
-    $('.browse-top-back-icon').toggleClass('mobilehideme');
 });
 
 $('.browse-top-back-icon').on('click', function(){
@@ -163,19 +169,26 @@ socket.on('duration', function(obj){
     cursong.find('.onesong-len').attr("len",obj);
 });
 
-socket.on('pos', function(obj){
-    if (!ispausing){
-        isplaying = true;
-    }
-    if (isplaying){
-        if (rotateAnime.paused){
-            console.log("ani start");
-            rotateAnime.play();
+function rotateit(curpos){
+    setTimeout(function(){ 
+        var diff = Math.abs(curpos - lastpos);
+        //console.log("curpos - " + curpos + " , lastpos - " + lastpos + " , diff - " + diff);
+        isplaying = (diff < 2 && diff != 0);
+        if (isplaying){
+            if (rotateAnime.paused){
+                console.log("ani start");
+                rotateAnime.play();
+            }
+        } else {
+            console.log("ani stop");
+            rotateAnime.pause();
         }
-    } else {
-        console.log("ani stop");
-        rotateAnime.pause();
-    }
+    }, 500);
+}
+
+socket.on('pos', function(obj){
+    rotateit(obj);
+    lastpos = obj;
     var lenel = cursong.find('.onesong-len');
     var tlen = parseInt(lenel.attr("len"));
     var tot = "</span>";
@@ -192,6 +205,7 @@ socket.on('pos', function(obj){
 
 socket.on('nowplaying', function(obj){
     console.log("now playing: " + obj.title + " album art - " + JSON.stringify(obj.albumart));
+    document.title = obj.title;
     var al = encodeURI(obj.albumart);
     if (!ValidAAURL(al)){
         al = 'IMG/Elephant_Walking_animated.gif';

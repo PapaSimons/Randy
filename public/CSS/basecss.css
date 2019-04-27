@@ -270,7 +270,11 @@ h3 {
     background:#FAFAFA;
 }
 
-#top-icon-menu img {
+#top-icon-menu-mobile {
+    display: none;
+}
+
+#top-icon-menu, #top-icon-menu-mobile img {
     float:left;
     margin-top: 25px;
     margin-bottom: 25px;
@@ -515,6 +519,14 @@ h3 {
     
     .browse-top-back-icon{
         display: none;  
+    }
+
+    #top-icon-menu {
+        display: none;
+    }
+
+    #top-icon-menu-mobile {
+        display: block;
     }
     
 }
