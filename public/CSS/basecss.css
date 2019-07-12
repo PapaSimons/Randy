@@ -316,6 +316,11 @@ h3 {
 }
 
 .pos-sec{
+    color:black;
+    display:inline-block;
+}
+
+.pos-sec-tot{
     color:grey;
 }
 
@@ -324,7 +329,7 @@ h3 {
 }
 
 .onesong-tit {
-    font-size: 1.1em;
+    font-size: 1.05em;
     width: 250px;
     white-space: nowrap;
     overflow: hidden;
@@ -332,11 +337,12 @@ h3 {
 }
 
 .onesong-artist {
-    font-size: 0.8em;
+    font-size: 0.7em;
     width: 250px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    margin-top:5px;
 }
 
 
@@ -372,11 +378,13 @@ h3 {
 }
 
 #playlist-pane-player .control-panel {
-    position: relative;
+  position: relative;
   width: 100%;
   height: 135px;
   z-index: 5;
   overflow: hidden;
+  background: -webkit-linear-gradient(to top, #E6E4E4 , #FCFCFC 30%, white 50%); /* Chrome 10-25, Safari 5.1-6 */
+  background: linear-gradient(to top, #E6E4E4, #FCFCFC 30%, white 50%); /* W3C, IE 10+/ Edge, Firefox 16+, Chrome 26+, Opera 12+, Safari 7+ */
 }
 
 #playlist-pane-player .control-panel .album-art {
@@ -430,8 +438,8 @@ h3 {
   background-position: center;
   background-repeat: no-repeat;
   background-size: 15px;
-    margin-top: 65px;
-  background-color: #fff;
+  margin-top: 65px;
+  /*background-color: #fff;*/
   cursor: pointer;
 }
 #playlist-pane-player .control-panel .controls .prev:hover,

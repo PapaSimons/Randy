@@ -93,7 +93,9 @@ app.post('/searchSongs', function (req, res) {
     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
     //return
     console.log("searching with keyword: " + req.body.keyword);
-    res.json({"results":playlist.searchSongs(req.body.keyword)});
+    playlist.searchSongs(req.body.keyword).then(function(rtn){
+        res.json({"results":rtn});
+    });
 });
 
 app.post('/getURLMeta', function (req, res) {

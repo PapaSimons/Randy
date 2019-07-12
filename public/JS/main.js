@@ -1,6 +1,3 @@
-//http://farhadi.ir/projects/html5sortable/
-
-//console.clear();
 var cursong = null;
 var prevbrowserpanemode = null;
 var curbrowserpanemode = null;
@@ -61,9 +58,23 @@ $('#search-bar').keyup(function(event) {
          } else {
              api.searchSongs($('#search-bar').val()).then(function(rtn){
                 var res = rtn.results;     
-                console.log(JSON.stringify(res));
+                console.log("search results: " + JSON.stringify(res));
                  var ht = "";
                  ht += "<img class='clickable' onclick='browsepane(\"init\");' src='IMG/back_icon.png'/>";
+                 if (res.radiostations.length > 0){
+                    templist.searchradiostations = [];
+                    ht += "<h3>Radio Stations</h3>";
+                    for (i in res.radiostations){
+                        templist.searchradiostations.push(res.radiostations[i].path);
+                        ht += "<div class='search-result'>";
+                        ht += "<div class='search-result-name' onclick='doSongOption(\"playnow\",\"searchradiostations\",\""+i+"\")'>";
+                        ht += "<span class='clickablelink'>" + res.radiostations[i].name + "</span>"; 
+                        ht += "<span class='search-result-path'>" + res.radiostations[i].album + "</span>";
+                        ht += "</div>"; 
+                        ht += "<div class='search-result-options'>" + songoptions('searchradiostations',i) + "</div>";
+                        ht += "</div>";
+                    }
+                }
                  if (res.albums.length > 0){
                      templist.searchalbums = [];
                      ht += "<h3>Albums</h3>";
@@ -193,7 +204,7 @@ socket.on('pos', function(obj){
     var tlen = parseInt(lenel.attr("len"));
     var tot = "</span>";
     if (!isNaN(tlen)){
-        tot = "/</span>" + secondsToHms(tlen);
+        tot = "/</span><span class='pos-sec-tot'>" + secondsToHms(tlen) + "</span>";
     }
     lenel.html("<span class='pos-sec'>" + secondsToHms(obj) + tot);
     if (seekbarreleased){
@@ -243,13 +254,17 @@ socket.on('playlist', function(objj){
            plitemclass = "onesong-nexts";
        }
        //meta
-       var tit = obj[i].tags.common.title;
        var len = "";
-       var artistalbum = obj[i].tags.common.artist;
-       if (obj[i].type == "file"){
-           len = obj[i].tags.format.duration;
-           artistalbum = obj[i].tags.common.album + " - " + obj[i].tags.common.artist;
-       } 
+       var tit = "";
+       var artistalbum = "";
+       if (obj[i].hasOwnProperty('tags')){
+            tit = obj[i].tags.common.title;
+            artistalbum = obj[i].tags.common.artist;
+            if (obj[i].type == "file"){
+                len = Math.round(obj[i].tags.format.duration);
+                artistalbum = obj[i].tags.common.album + " - " + obj[i].tags.common.artist;
+            } 
+        }
        var ns = "<div onclick='playsong("+i+");' class='onesong " + plitemclass + "' id='song_" + i + "' data-id='" + i + "'>";
        ns += "<div class='onesong-details'>";
        ns += "<div class='onesong-tit' title='" + tit + "'>" + tit + "</div>";
@@ -259,21 +274,6 @@ socket.on('playlist', function(objj){
        ns += "</div>";
        plist.append(ns);
    } 
-    /*
-    var sortable = new Sortable(document.getElementById('songlist'), {
-        delay: 0, // time in milliseconds to define when the sorting should start
-        animation: 150,  // ms, animation speed moving items when sorting, `0` — without animation
-        ghostClass: "sortable-ghost",  // Class name for the drop placeholder
-        chosenClass: "sortable-chosen",  // Class name for the chosen item
-        dragClass: "sortable-drag",  // Class name for the dragging item
-        dataIdAttr: 'data-id',
-        // Called by any change to the list (add / update / remove)
-        onSort: function (evt) {
-            console.log(this.toArray());
-            socket.emit('updatelist', 'hello');
-        }
-    });
-    */
     //set the current song
     cursong = $('#song_' + curid);
     //scroll to the current song
