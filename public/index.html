@@ -22,11 +22,8 @@
               </div>
               <div id="browse-home">
                   <div class="browse-top-menu">  
-                      <input id="search-bar" placeholder="weburls or keywords.." type="text"/>
-                      <span class='browse-top-back-icon clickable'>&lt;</span>
-                    <img class="browse-top-menu-icon clickable" onclick="browsepane('files');" src="IMG/icon_folder.png"/>
-                    <img class="browse-top-menu-icon clickable" id="stickybutt" onclick="browsepane('stickies');" src="IMG/icon_lovehol.png"/>
-                    <img class="browse-top-menu-icon clickable" onclick="browsepane('settings');" src="IMG/icon_settings.png"/>
+                    <span class='browse-top-back-icon clickable'>&lt;</span>
+                    <input id="search-bar" placeholder="weburls or keywords.." type="text"/>
                   </div>
                   <div id="browse-search-url">
                       &nbsp;
@@ -58,6 +55,8 @@
                           Change
                           <div class="ld ld-ring ld-spin"></div>
                         </span>
+                        <br/>
+                        <div id="sd_but" class="settings-butt2" onclick="poweroff()">Power off</div>
                     </div>
                     <div id="browse-album">  
                       &nbsp;
@@ -65,6 +64,13 @@
                     <div id="browse-stickies">
                       &nbsp;
                     </div>
+                </div>
+                <div class="browse-bottm-bar">
+                  <div class="inner-center">
+                    <img class="browse-top-menu-icon clickable" onclick="browsepane('files');" src="IMG/icon_folder.png"/>
+                    <img class="browse-top-menu-icon clickable" id="stickybutt" onclick="browsepane('stickies');" src="IMG/icon_lovehol.png"/>
+                    <img class="browse-top-menu-icon clickable" onclick="browsepane('settings');" src="IMG/icon_settings.png"/>
+                  </div>
                 </div>
               </div>
           </div>

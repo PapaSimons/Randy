@@ -11,11 +11,13 @@ html, body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
     /*background: url('../IMG/1010.png');*/
-    background: #c21500; /* fallback for old browsers */
-  background: -webkit-linear-gradient(to top, #c21500, #ffc500); /* Chrome 10-25, Safari 5.1-6 */
-  background: linear-gradient(to top, #c21500, #ffc500); /* W3C, IE 10+/ Edge, Firefox 16+, Chrome 26+, Opera 12+, Safari 7+ */
-    margin: 0px;
-    padding: 0px;
+  background: #c21500; /* fallback for old browsers */
+  background: -webkit-linear-gradient(to top, #c21500, #ffc500); 
+  background: linear-gradient(to top, #c21500, #ffc500); 
+  background:url('https://source.unsplash.com/random/');
+  background-size:cover;
+  margin: 0px;
+  padding: 0px;
 }
 
 main{
@@ -107,21 +109,34 @@ h3 {
 
 
 .browse-top-menu {
-    padding:25px 20px;
+    padding:20px 20px;
     display: flex;
+    flex-direction: row;
+}
+
+.browse-bottm-bar {
+    display: flex;
+    width: 100%;
+    background: #000044;
+}
+
+.inner-center {
+    text-align: center;
+    margin: 0 auto;
+    padding:15px
 }
 
 .browse-init-randomalbums img {
     width: 23%;
-    margin-right: 12px;
-    margin-top: 10px;
+    margin-right: 2%;
+    margin-bottom: 2%;
     cursor: pointer;
 }
 
 #search-bar {
     flex: 1;
-    padding:6px 10px;
-    border-radius: 10px;
+    padding:10px 10px;
+    border-radius: 6px;
     border: 0px;
     background-color: white;
 }
@@ -135,6 +150,19 @@ h3 {
     max-width: 65%;
 }
 
+.settings-butt2 {
+    display: inline-block;
+    padding:6px 10px;
+    border-radius: 3px;
+    border: 1px solid black;
+    background-color: grey;
+    color: white;
+    cursor:pointer;
+    margin: 20px 0px;
+    text-align:center;
+    position:relative;
+}
+
 .settings-butt{
     padding:6px 10px;
     border-radius: 3px;
@@ -144,6 +172,8 @@ h3 {
     max-width: 30%;
     margin-left: 10px;
     cursor:pointer;
+    text-align:center;
+    position:relative;
 }
 
 .settings-err{
@@ -163,7 +193,7 @@ h3 {
 
 .browse-top-menu-icon {
     vertical-align: middle;
-    margin-left: 15px;
+    margin: 0px 20px;
     height:23px;
 }
 
@@ -172,6 +202,7 @@ h3 {
     vertical-align: middle;
     font-size:2em;
     color:#cdc;
+    margin-right:15px;
 }
 
 #browse-search-url {
@@ -191,6 +222,7 @@ h3 {
     cursor:pointer;
     text-align: right;
     margin-right: 15px;
+    margin-bottom: 15px;
     font-weight: bold;
 }
 
@@ -288,6 +320,7 @@ h3 {
     font-size: 1.2em;
     color:red;
     cursor: pointer;
+    user-select: none;
 }
 
 #playlist-pane-songlist {
@@ -344,7 +377,6 @@ h3 {
     text-overflow: ellipsis;
     margin-top:5px;
 }
-
 
 .onesong-prevs {
     background:#FAFAFA;
@@ -408,6 +440,8 @@ h3 {
     position: absolute;
     z-index: 5;
     overflow:hidden;
+    width:270px;
+    height:270px;
 }
 /*
 #playlist-pane-player .control-panel.active .album-art {
@@ -516,15 +550,6 @@ h3 {
         display: inline;
     }
     
-    .browse-top-menu {
-        display: block;
-    }
-    
-    #search-bar{
-        width:90%;
-        margin-bottom: 10px;
-    }
-    
     .browse-top-back-icon{
         display: none;  
     }
@@ -537,6 +562,15 @@ h3 {
         display: block;
     }
     
+    #browse-search-url{
+        display:block;
+    }
+
+    .browse-search-img img{
+        flex: unset;
+        width:100%;
+    }
+
 }
 
 

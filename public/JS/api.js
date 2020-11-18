@@ -1,75 +1,51 @@
 var api = {
     /* host url */
     hurl:window.location.origin + "/",
+    requestsObj:{},
     randy: function (u){
-        return $.ajax({
-            method: "POST",
-            url: api.hurl + "randy"
-        });
+        return callAPI("randy",{});
     },
     getURLMeta: function (u){
-        return $.ajax({
-            method: "POST",
-            url: api.hurl + "getURLMeta",
-            data: {
-                url:u
-            }
-        });
+        return callAPI("getURLMeta",{url:u});
     },
     searchSongs: function (k){
-        return $.ajax({
-            method: "POST",
-            url: api.hurl + "searchSongs",
-            data: {
-                keyword:k
-            }
-        });
+        return callAPI("searchSongs",{keyword:k});
     },
     getStickyList: function (l){
-        return $.ajax({
-            method: "POST",
-            url: api.hurl + "getStickyList",
-            data: {
-                limit:l
-            }
-        });
+        return callAPI("getStickyList",{limit:l});
     },
     getRandomAlbums: function (l){
-        return $.ajax({
-            method: "POST",
-            url: api.hurl + "getRandomAlbums",
-            data: {
-                limit:l
-            }
-        });
+        return callAPI("getRandomAlbums",{limit:l});
     },
     getAlbum: function (d){
-        return $.ajax({
-            method: "POST",
-            url: api.hurl + "getAlbum",
-            data: {
-                albumdir:d
-            }
-        });
+        return callAPI("getAlbum",{albumdir:d});
     },
     getAlbums: function (l){
-        return $.ajax({
-            method: "POST",
-            url: api.hurl + "getAlbums",
-            data: {
-                limit:l
-            }
-        });
+        return callAPI("getAlbums",{limit:l});
     },
     setMusicFolder: function (mf){
-        return $.ajax({
-            method: "POST",
-            url: api.hurl + "setMusicFolder",
-            data: {
-                mf:mf
-            }
-        });
+        return callAPI("setMusicFolder",{mf:mf});
+    },
+    powerOff: function (){
+        return callAPI("powerOff",{});
     }
 }
 
 console.log("api - " + api.hurl);
+
+function callAPI(c,d){
+    if (api.requestsObj.hasOwnProperty(c)){
+        var lastreq = api.requestsObj[c];
+    }
+    api.requestsObj[c] = $.ajax({
+        method: "POST",
+        url: api.hurl + c,
+        data: d,
+        beforeSend : function() {
+            if(lastreq && lastreq.readyState < 4) {
+                lastreq.abort();
+            }
+        }
+    });
+    return api.requestsObj[c];
+}

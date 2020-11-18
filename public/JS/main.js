@@ -29,7 +29,22 @@ var rotateAnime = anime({
     autoplay: false // prevent the instance from playing
   });
 
-$('#search-bar').keyup(function(event) {
+function debounce(func, wait, immediate) {
+    var timeout;
+    return function() {
+        var context = this, args = arguments;
+        var later = function() {
+            timeout = null;
+            if (!immediate) func.apply(context, args);
+        };
+        var callNow = immediate && !timeout;
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+        if (callNow) func.apply(context, args);
+    };
+};
+
+$('#search-bar').keyup(debounce(function(event) {
     if (ValidURL($('#search-bar').val())){
         api.getURLMeta($('#search-bar').val()).then(function(meta){
            if (meta.title){
@@ -107,7 +122,7 @@ $('#search-bar').keyup(function(event) {
          }
      }
     return true;
-});
+},500));
 
 $('#top-text').on('click', function(){
    //api.randy(); 
@@ -187,11 +202,11 @@ function rotateit(curpos){
         isplaying = (diff < 2 && diff != 0);
         if (isplaying){
             if (rotateAnime.paused){
-                console.log("ani start");
+                //console.log("ani start");
                 rotateAnime.play();
             }
         } else {
-            console.log("ani stop");
+            //console.log("ani stop");
             rotateAnime.pause();
         }
     }, 500);
@@ -216,6 +231,7 @@ socket.on('pos', function(obj){
 
 socket.on('nowplaying', function(obj){
     console.log("now playing: " + obj.title + " album art - " + JSON.stringify(obj.albumart));
+    //console.log("album: " + obj.album);
     document.title = obj.title;
     var al = encodeURI(obj.albumart);
     if (!ValidAAURL(al)){
@@ -224,7 +240,7 @@ socket.on('nowplaying', function(obj){
     if (cursong != null){
         cursong.find(".onesong-tit").html(obj.title);
         if (obj.hasOwnProperty('album')){
-            cursong.find(".onesong-artist").html(al);
+            cursong.find(".onesong-artist").html(obj.album);
         }
         var newimg = "<img class='album-cover-pane' src=\"" + al + "\"/>";
         if ($('#browse-zen').find("img").attr("src") != al){
@@ -333,13 +349,20 @@ function browsepane(mode){
                 ht += "<img class='clickable' onclick='browsepane(\"init\");' src='IMG/back_icon.png'/>";
                  if (res.albums.length > 0){
                      templist.allalbums = [];
-                     ht += "<h3>Albums</h3>";
+                     //ht += "<h3>Albums</h3>";
+                     var lastalb = "";
                      for (i in res.albums){
+                         var albarr = res.albums[i].albumpath.split("/");
+                         var curalb = albarr[(albarr.length - 1)];
+                         if (curalb != lastalb){
+                            ht += "<h3>" + curalb + "</h3>";
+                         }
+                         lastalb = curalb;
                          templist.allalbums.push(res.albums[i].album);
                          ht += "<div class='search-result'>";
                          ht += "<div class='search-result-name' onclick='showAlbum(\"allalbums\",\""+i+"\")'>";
                          ht += "<span class='clickablelink'>" + res.albums[i].name + "</span>"; 
-                         ht += "<span class='search-result-path'>" + res.albums[i].albumpath + "</span>";
+                         //ht += "<span class='search-result-path'>" + res.albums[i].albumpath + "</span>";
                          ht += "</div>"; 
                          ht += "<div class='search-result-options'>" + songoptions('allalbums',i) + "</div>";
                          ht += "</div>";
@@ -355,7 +378,10 @@ function browsepane(mode){
                 ht += "<img class='clickable' onclick='browsepane(\""+prevbrowserpanemode+"\");' src='IMG/back_icon.png'/>";
                  if (res.files.length > 0){
                      templist.curalbumfiles = [];
+                     ht += "<div class='search-result'>";
                      ht += "<h3>" + res.name + "</h3>";
+                     ht += "<div class='search-result-options'>" + songoptions('allalbums',templist.curalbumi) + "</div>";
+                     ht += "</div>";
                      for (i in res.files){
                         templist.curalbumfiles.push(res.files[i].path);
                         ht += "<div class='search-result'>";
@@ -393,7 +419,7 @@ function browsepane(mode){
                      ht += "<h3>Albums</h3>";
                      for (i in res.albums){
                          templist.initralbums.push(res.albums[i].album);
-                         ht += "<img src=\"" + encodeURI(res.albums[i].albumArt) + "\" onclick='doSongOption(\"playnow\",\"initralbums\",\""+i+"\")'/>";
+                         ht += "<img alt=\"" + res.albums[i].name + "\" title=\"" + res.albums[i].name + "\" src=\"" + encodeURI(res.albums[i].albumArt) + "\" onclick='doSongOption(\"playnow\",\"initralbums\",\""+i+"\")'/>";
                      }
                  }
                 $('.browse-init-randomalbums').html(ht); 
@@ -443,9 +469,14 @@ function changemf(){
     }
 }
 
+function poweroff(){
+    api.powerOff();
+}
+
 //album view//
 function showAlbum(list,i){
     templist.curalbum = templist[list][i];
+    templist.curalbumi = i;
     browsepane('album');
 }
 
@@ -471,6 +502,7 @@ function doSongOption(op,opt,i){
         $('#browse-pane').toggleClass('mobilehideme');
         $('#playlist-pane').toggleClass('mobilehideme');
     } else {
+        browsepane("stickies");
         Bounce($('#stickybutt'));
     }
 }
@@ -486,7 +518,7 @@ function secondsToHms(t) {
     var sec = time % 60;
     var sec_min = "";
     if (hr > 0) {
-       sec_min += "" + hrs + ":" + (min < 10 ? "0" : "");
+       sec_min += "" + hr + ":" + (min < 10 ? "0" : "");
     }
     sec_min += "" + min + ":" + (sec < 10 ? "0" : "");
     sec_min += "" + sec;

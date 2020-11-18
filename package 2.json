@@ -18,7 +18,6 @@
     "mpv-ipc": "^0.1.3",
     "music-metadata": "^2.8.1",
     "needle": "^2.4.0",
-    "obaa": "^2.1.0",
     "simple-json-db": "^1.2.1",
     "smart-observe": "^1.0.4",
     "socket.io": "^2.2.0"

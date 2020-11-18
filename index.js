@@ -16,7 +16,6 @@ var playlist = require('./lib/playlist_utils.js');
 var createPlayer = require('./lib/mpv-wrapper');
 var metaget = require("metaget");
 var cp = require('child_process');
-var observe = require('smart-observe');
 var fs = require("fs");
 
 //vars
@@ -39,7 +38,16 @@ app.use("/", express.static(__dirname + "/public"));
 
 ///--- APIs Exposed ---///
 
-//POST 
+//POST
+app.post('/powerOff', function (req, res) {
+    res.header("Access-Control-Allow-Origin", "http://localhost");
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+    //return
+    console.log("Powering off - see you later!");
+    poweroff();
+    res.json({"success":200});
+});
+
 app.post('/getStickyList', function (req, res) {
     res.header("Access-Control-Allow-Origin", "http://localhost");
     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
@@ -213,12 +221,7 @@ function initRandy(){
         initmf();
         //load playlist
         playlist.getAllSongs().then(function(){
-            playlist.initPlaylist(3).then(function(fsong){
-                //watch the playlist
-                observe(playlist.getPlobj(),'randylist', function(n,o){
-                    console.log('playlist changed ' + playlist.getPlaying());
-                    io.sockets.emit('playlist', {playlist:playlist.getPlayList(), playing:playlist.getPlaying()});
-                });
+            playlist.initPlaylist(3,emitplaylist).then(function(fsong){
                 if (player != null){
                     //console.log("initPlaylist - loading first song - " + fsong.songfile);
                     playsong(fsong); 
@@ -247,10 +250,16 @@ process.on('uncaughtException', function (err) {
     console.log(err);
 }); 
 
+//emit playlist
+function emitplaylist(){
+    console.log('playlist changed ' + playlist.getPlaying());
+    io.sockets.emit('playlist', {playlist:playlist.getPlayList(), playing:playlist.getPlaying()});
+}
+
 function createNewPlayer(){
     //create player instance
     //createPlayer(['--no-video']).then(function(newplayer){
-    createPlayer({ args: ['--af-clr','--vf-clr','--vid=no'] }, (err, newplayer) => {
+    createPlayer({ args: ['--af-clr','--vf-clr','--vid=no','--ytdl-format=best'] }, (err, newplayer) => {
         if (err) {
             console.error("Error creating player - " + err);
         } else {
@@ -289,17 +298,24 @@ function createNewPlayer(){
                         console.log('Title changed: ' + t["icy-title"]);
                         var curs = playlist.getCurrentSong();
                         var al = curs.tags.common.artist;
-                        if (t.hasOwnProperty("icy-name")){
-                            al += " - " + t["icy-name"];
-                        } else {
-                            al += " - " + curs.tags.common.title;
+                        var tt = curs.tags.common.title;
+                        if (t["icy-title"] != ""){
+                            tt = t["icy-title"];
                         }
-                        io.sockets.emit('nowplaying', {title:t["icy-title"], album:al , albumart:curs.albumart});
+                        if (al == tt){
+                            al = "Radio stream";
+                        } else if (t.hasOwnProperty("icy-name")){
+                            al = t["icy-name"];
+                        } else if (al == "") {
+                            al = "Radio stream";
+                        }
+                        io.sockets.emit('nowplaying', {title:tt, album:al , albumart:curs.albumart});
                     }
                 }
             });
             //player.observeProperty('AV', t => console.log('Audio specs: ' + t));
             //player.observeProperty('A', t => console.log('Player info: ' + t));
+            
             //when mpv is idle
             //testing alternative to end of file with idle
             player.onIdle(() => {
@@ -316,6 +332,12 @@ function createNewPlayer(){
     });  
 }
 
+// powers off linux (rpi) //
+function poweroff(){
+    cp.spawnSync('poweroff');
+}
+
+// kills any mpv processes (linux/mac) //
 function killmpv(){
     cp.spawnSync('killall',['mpv']);
 }
@@ -351,6 +373,7 @@ function timeout(ms) {
 } 
 
 async function playsong(songobj){
+    console.log("songobj - " + songobj);
     if (songobj !== null){
         //check if mpv is alive
         try {
