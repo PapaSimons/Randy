@@ -22,8 +22,8 @@
               </div>
               <div id="browse-home">
                   <div class="browse-top-menu">  
-                    <span class='browse-top-back-icon clickable'>&lt;</span>
-                    <input id="search-bar" placeholder="weburls or keywords.." type="text"/>
+                    <span class='browse-top-back-icon clickable'><img src='IMG/Close_MD.svg'></span>
+                    <input id="search-bar" placeholder="Search weburls or keywords.." type="text" autocomplete="off"/>
                   </div>
                   <div id="browse-search-url">
                       &nbsp;
@@ -67,18 +67,19 @@
                 </div>
                 <div class="browse-bottm-bar">
                   <div class="inner-center">
-                    <img class="browse-top-menu-icon clickable" onclick="browsepane('files');" src="IMG/icon_folder.png"/>
-                    <img class="browse-top-menu-icon clickable" id="stickybutt" onclick="browsepane('stickies');" src="IMG/icon_lovehol.png"/>
-                    <img class="browse-top-menu-icon clickable" onclick="browsepane('settings');" src="IMG/icon_settings.png"/>
+                    <img class="browse-top-menu-icon clickable" onclick="browsepane('init');" src="IMG/House_01.svg"/>
+                    <img class="browse-top-menu-icon clickable" onclick="browsepane('files');" src="IMG/Folder.svg"/>
+                    <!--<img class="browse-top-menu-icon clickable" id="stickybutt" onclick="browsepane('stickies');" src="IMG/icon_lovehol.png"/>-->
+                    <img class="browse-top-menu-icon clickable" onclick="browsepane('settings');" src="IMG/Settings.svg"/>
                   </div>
                 </div>
               </div>
           </div>
           <div id="playlist-pane">
             <div id="playlist-pane-top">
-                <div id="top-icon-menu"><img class="clickable" src="IMG/menu_icon.png"/></div>
-                <div id="top-icon-menu-mobile"><img class="clickable" src="IMG/menu_icon.png"/></div>
-                <div id="top-text">Randy</div>
+                <div id="top-icon-menu"><img class="clickable" src="IMG/Menu_Alt_04.svg"/></div>
+                <div id="top-icon-menu-mobile"><img class="clickable" src="IMG/Menu_Alt_04.svg"/></div>
+                <div id="top-text"><img class="clickable" src="IMG/Randy.png"/></div>
             </div>
             <div id="playlist-pane-songlist">
               <div id="songlist"></div>

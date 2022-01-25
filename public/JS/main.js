@@ -75,7 +75,7 @@ $('#search-bar').keyup(debounce(function(event) {
                 var res = rtn.results;     
                 console.log("search results: " + JSON.stringify(res));
                  var ht = "";
-                 ht += "<img class='clickable' onclick='browsepane(\"init\");' src='IMG/back_icon.png'/>";
+                 ht += "<img class='clickable' onclick='browsepane(\"init\");' src='IMG/Arrow_Right_MD.svg'/>";
                  if (res.radiostations.length > 0){
                     templist.searchradiostations = [];
                     ht += "<h3>Radio Stations</h3>";
@@ -327,7 +327,7 @@ function browsepane(mode){
             api.getStickyList().then(function(rtn){
                 var res = rtn.results;     
                 var ht = "";
-                ht += "<img class='clickable' onclick='browsepane(\"init\");' src='IMG/back_icon.png'/>";
+                ht += "<img class='clickable' onclick='browsepane(\"init\");' src='IMG/Arrow_Right_MD.svg'/>";
                  if (res.length > 0){
                      templist.allstickies = [];
                      ht += "<h3>Sticky</h3>";
@@ -346,7 +346,7 @@ function browsepane(mode){
             api.getAlbums().then(function(rtn){
                 var res = rtn.results;     
                 var ht = "";
-                ht += "<img class='clickable' onclick='browsepane(\"init\");' src='IMG/back_icon.png'/>";
+                ht += "<img class='clickable' onclick='browsepane(\"init\");' src='IMG/Arrow_Right_MD.svg'/>";
                  if (res.albums.length > 0){
                      templist.allalbums = [];
                      //ht += "<h3>Albums</h3>";
@@ -375,7 +375,7 @@ function browsepane(mode){
             api.getAlbum(templist.curalbum).then(function(rtn){
                 var res = rtn.results;     
                 var ht = "";
-                ht += "<img class='clickable' onclick='browsepane(\""+prevbrowserpanemode+"\");' src='IMG/back_icon.png'/>";
+                ht += "<img class='clickable' onclick='browsepane(\""+prevbrowserpanemode+"\");' src='IMG/Arrow_Right_MD.svg'/>";
                  if (res.files.length > 0){
                      templist.curalbumfiles = [];
                      ht += "<div class='search-result'>";
@@ -484,11 +484,11 @@ function showAlbum(list,i){
 function songoptions(obj,i){
     var ht = "<div class='song-options'>";
     if (obj.indexOf("album") != -1 || obj.indexOf("search") != -1){
-        ht += "<img class='clickable' onclick='doSongOption(\"playnow\",\""+obj+"\",\""+i+"\")' src='IMG/icon_playnow.png'/>";
+        ht += "<img class='clickable' onclick='doSongOption(\"playnow\",\""+obj+"\",\""+i+"\")' src='IMG/Play.svg'/>";
     }
-    ht += "<img class='clickable' onclick='doSongOption(\"addtolist\",\""+obj+"\",\""+i+"\")' src='IMG/icon_plus.png'/>";
+    ht += "<img class='clickable' onclick='doSongOption(\"addtolist\",\""+obj+"\",\""+i+"\")' src='IMG/First_Aid.svg'/>";
     if (obj.indexOf("stickies") == -1){
-        ht += "<img class='clickable' onclick='doSongOption(\"stick\",\""+obj+"\",\""+i+"\")' src='IMG/icon_love.png'/>";
+        ht += "<img class='clickable' onclick='doSongOption(\"stick\",\""+obj+"\",\""+i+"\")' src='IMG/Bookmark.svg'/>";
     }
     ht += "</div>";
     return ht;

@@ -285,7 +285,7 @@ function createNewPlayer(){
             //player.observeProperty('audio-params', t => console.log('audio-params: ' + JSON.stringify(t)));
             player.observeProperty('media-title', function(t){
                 isloaded = true;
-                if (t != null){
+                if (t && t != null){
                     var curs = playlist.getCurrentSong();
                     console.log('Title changed: ' + t);
                     io.sockets.emit('nowplaying', {title:t,albumart:curs.albumart});
@@ -293,7 +293,7 @@ function createNewPlayer(){
             });
             player.observeProperty('metadata', function(t){
                 //console.log('metadata: ' + JSON.stringify(t));
-                if (t !== null){
+                if (t && t !== null){
                     if (t.hasOwnProperty("icy-title")){
                         console.log('Title changed: ' + t["icy-title"]);
                         var curs = playlist.getCurrentSong();

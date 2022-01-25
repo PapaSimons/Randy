@@ -1,7 +1,7 @@
 #!/bin/sh
 
 echo "-------------------------------------------"
-echo "######>>> Starting"
+echo "######>>> Starting RPIOS"
 echo "-------------------------------------------"
 echo "-------------------------------------------"
 echo "######>>> Expanding file system"
@@ -30,7 +30,7 @@ echo "-------------------------------------------"
 apt-get install -y nginx mpv exfat-fuse exfat-utils ntfs-3g
 
 echo "-------------------------------------------"
-echo "######>>> installing nodejs (v14)"
+echo "######>>> installing nodejs"
 echo "-------------------------------------------"
 
 sudo curl -sL https://deb.nodesource.com/setup_current.x | sudo bash -
@@ -117,7 +117,7 @@ Description=Mount USB Drive on %i
 [Service]
 Type=oneshot
 RemainAfterExit=true
-ExecStart=/usr/bin/pmount --umask 000 /dev/%i /media/%i
+ExecStart=/usr/bin/pmount /dev/%i /media/%i
 ExecStop=/usr/bin/pumount /dev/%i
 EOF
 
@@ -137,11 +137,12 @@ env PATH=$PATH:/usr/bin /usr/local/lib/node_modules/pm2/bin/pm2 startup systemd 
 pm2 save
 
 echo "-------------------------------------------"
-echo "######>>> remove unneeded packages"
+echo "######>>> remove un-needed packages"
 echo "-------------------------------------------"
 
 apt autoremove -y
 
 echo "-------------------------------------------"
 echo "######>>> lets reboot now"
+echo "### to reboot type: sudo reboot now"
 echo "-------------------------------------------"
