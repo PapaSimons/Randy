@@ -50,7 +50,7 @@ $('#search-bar').keyup(debounce(function(event) {
            if (meta.title){
                templist.search = [$('#search-bar').val()];
                console.log(JSON.stringify(meta));
-                var ht = "<div class='browse-search-x' onclick='$(\"#browse-search-url\").hide();'>X</div>";
+                var ht = "<div class='browse-search-x' onclick='$(\"#browse-search-url\").hide();'><img src='IMG/Close_MD.svg'/></div>";
                 ht += "<div class='browse-search-img'>";
                 ht += "<img src='" + meta.img + "'/>";
                 ht += "</div>";
@@ -234,15 +234,17 @@ socket.on('nowplaying', function(obj){
     //console.log("album: " + obj.album);
     document.title = obj.title;
     var al = encodeURI(obj.albumart);
+    var sign = "";
     if (!ValidAAURL(al)){
-        al = 'IMG/Elephant_Walking_animated.gif';
+        al = 'https://doodleipsum.com/500x500?n=' + Math.random();
+        sign = '<span>No Album Cover...?<br/>Randy got you covered!</span>';
     }
     if (cursong != null){
         cursong.find(".onesong-tit").html(obj.title);
         if (obj.hasOwnProperty('album')){
             cursong.find(".onesong-artist").html(obj.album);
         }
-        var newimg = "<img class='album-cover-pane' src=\"" + al + "\"/>";
+        var newimg = "<img class='album-cover-pane' src=\"" + al + "\"/>" + sign;
         if ($('#browse-zen').find("img").attr("src") != al){
             if ($('#browse-zen').is(":hidden")){
                 $('.album-art').css("background-image", 

@@ -93,6 +93,13 @@ h3 {
     width: 100%;
 }
 
+#browse-zen span{
+    position: relative;
+    bottom: 60px;
+    left:20px;
+    background: #fff;
+}
+
 #browse-home {
     background:#ddd;
     height:100%;
@@ -206,9 +213,11 @@ h3 {
 
 #browse-search-url {
     display: flex;
-    padding: 20px;
-    background: #666;
-    color: white;
+    padding: 10px;
+    background: #fff;
+    margin: 20px;
+    margin-top: 0px;
+    border-radius: 5px;
 }
 
 .browse-search-img img{
@@ -217,12 +226,9 @@ h3 {
 }
 
 .browse-search-x {
-    font-size: 1.3em;
     cursor:pointer;
-    text-align: right;
     margin-right: 15px;
     margin-bottom: 15px;
-    font-weight: bold;
 }
 
 #browse-search-url .song-options {
@@ -235,11 +241,9 @@ h3 {
 
 .browse-search-tit {
     padding: 20px;
-    color: white;
 }
 
 .browse-search-tit .desc{
-    color: #ededed;
     font-size: 0.8em;
 }
 
@@ -567,8 +571,8 @@ h3 {
     }
 
     .browse-search-img img{
+        padding-left:20px;
         flex: unset;
-        width:100%;
     }
 
 }

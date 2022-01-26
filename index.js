@@ -109,20 +109,32 @@ app.post('/searchSongs', function (req, res) {
 app.post('/getURLMeta', function (req, res) {
     res.header("Access-Control-Allow-Origin", "http://localhost");
     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
-    metaget.fetch(req.body.url, function (err, meta_response) {
-        if(err){
-            console.log("url metadata error: " + err);
-            res.json({"success":false,"err":err,"results":null});
-        }else{
-            console.log(meta_response);
-            //return
+    console.log('Checking audio stream for: ' + req.body.url);
+    playlist.checkAudioStream(req.body.url).then(function(rtn){
+        console.log('is it an audio stream? - ' + rtn);
+        if (rtn){
             res.json({"success":true,
-                      "title":meta_response['og:title'],
-                      "description":meta_response['og:description'],
-                      "img":meta_response["og:image"]});
+                      "title":req.body.url,
+                      "description":'Audio Stream',
+                      "img":''});
+        } else {
+            console.log('Getting metadata for: ' + req.body.url);
+            metaget.fetch(req.body.url, function (err, meta_response) {
+                if(err){
+                    console.log("url metadata error: " + err);
+                    res.json({"success":false,"err":err,"results":null});
+                }else{
+                    console.log(meta_response);
+                    var meta = playlist.getBestMeta(meta_response, req.body.url);
+                    //return
+                    res.json({"success":true,
+                              "title":meta.title,
+                              "description":meta.description,
+                              "img":meta.image});
+                }
+            });
         }
     });
-    
 });
 
 //IO
@@ -288,7 +300,7 @@ function createNewPlayer(){
                 if (t && t != null){
                     var curs = playlist.getCurrentSong();
                     console.log('Title changed: ' + t);
-                    io.sockets.emit('nowplaying', {title:t,albumart:curs.albumart});
+                    io.sockets.emit('nowplaying', {title:t, albumart:curs.albumart});
                 }
             });
             player.observeProperty('metadata', function(t){

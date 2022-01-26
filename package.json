@@ -10,7 +10,7 @@
   "author": "Gideon",
   "license": "ISC",
   "dependencies": {
-    "album-art": "^1.0.4",
+    "album-art": ">1.0.4",
     "console-stamp": "^0.2.9",
     "express": "^4.17.1",
     "filehound": "^1.17.1",
