@@ -1,0 +1,1 @@
+This folder has all the database files for songs and metadata

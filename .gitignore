@@ -1,4 +1,5 @@
 /node_modules
+/DB/*.json
 npm-debug.log
 .git
 .cache
