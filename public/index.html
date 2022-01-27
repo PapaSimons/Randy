@@ -24,7 +24,11 @@
               <div id="browse-home">
                   <div class="browse-top-menu">  
                     <span class='browse-top-back-icon clickable'><img src='IMG/Close_MD.svg'></span>
-                    <input id="search-bar" placeholder="Search weburls or keywords.." type="text" autocomplete="off"/>
+                    <div id="search">
+                      <input id="search-bar" placeholder="Search weburls or keywords.." type="search" autocomplete="off"/>
+                      <button id="button"><img src='IMG/Search_Magnifying_Glass.svg'/></button>
+                      <div class="spinner"><img src='IMG/Spin.svg'/></div>
+                    </div>
                   </div>
                   <div id="browse-search-url">
                       &nbsp;
@@ -46,18 +50,23 @@
                     </div>
                     <div id="browse-settings">
                         <div class="settings-intro">
-                            Start by <b>setting up your music folder</b></br>
-                            Or insert links to web streaming sources such as youtube videos, soundcloud songs or web radios into the search bar.
+                            Hey there, Welcome to Randy!
+                            <br/><br/>
+                            Start by setting up your music source!<br/>
+                            You can also try the magic searchbar with keywords, youtube videos, soundcloud, mixcloud, web radio urls and more...
                         </div>
-                        <h3>Settings</h3>
+                        <h3>Music Source</h3>
+                        <div id="devices"></div>
+                        <!--
                         <div id="mf_err" class="settings-err"></div>
                         <input class='settings-inp' type="text" id='mf_inp' placeholder="Path to music folder"/>
                         <span id="mf_but" class="settings-butt ld-ext-right" onclick="changemf()">
-                          Change
+                          Set
                           <div class="ld ld-ring ld-spin"></div>
                         </span>
                         <br/>
                         <div id="sd_but" class="settings-butt2" onclick="poweroff()">Power off</div>
+                        -->
                     </div>
                     <div id="browse-album">  
                       &nbsp;
@@ -68,7 +77,7 @@
                 </div>
                 <div class="browse-bottm-bar">
                   <div class="inner-center">
-                    <img class="browse-top-menu-icon clickable" onclick="browsepane('init');" src="IMG/House_01.svg"/>
+                    <img class="browse-top-menu-icon clickable" id="homebutt" onclick="browsepane('init');" src="IMG/House_01.svg"/>
                     <img class="browse-top-menu-icon clickable" onclick="browsepane('files');" src="IMG/Folder.svg"/>
                     <!--<img class="browse-top-menu-icon clickable" id="stickybutt" onclick="browsepane('stickies');" src="IMG/icon_lovehol.png"/>-->
                     <img class="browse-top-menu-icon clickable" onclick="browsepane('settings');" src="IMG/Settings.svg"/>
@@ -107,7 +116,8 @@
                 </div>
             </div>
         </div>
-      </main>  
+      </main> 
+      <div id="snackbar"></div> 
       <script src="JS/api.js"></script>
       <script src='JS/jquery.knob.min.js'></script>
       <script src='JS/anime.min.js'></script>

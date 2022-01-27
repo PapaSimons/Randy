@@ -37,7 +37,7 @@ main{
     opacity: 1; /* Firefox */
 }
 
-h3 {
+h3, .h3 {
     color: #000;
     font-weight: bold;
     font-size: 0.8em;
@@ -190,9 +190,6 @@ h3 {
 }
 
 .settings-intro{
-    background:#aaa;
-    padding:10px;
-    border-radius: 10px;
     margin-bottom:10px;
     font-size: 0.85em;
     max-width: 80%;
@@ -222,7 +219,8 @@ h3 {
 
 .browse-search-img img{
     flex: 50%;
-    width:200px;
+    width:150px;
+    padding-top: 10px;
 }
 
 .browse-search-x {
@@ -232,28 +230,51 @@ h3 {
 }
 
 #browse-search-url .song-options {
-    margin-top: 15px;
+    
 }
 
 #browse-search-url .song-options img {
-    margin-right: 10px;
+    padding-right: 10px;
 }
 
 .browse-search-tit {
     padding: 20px;
 }
 
+.browse-search-tit .tit{
+    text-overflow:ellipsis;
+    overflow:hidden;
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    white-space: normal;
+}
+
 .browse-search-tit .desc{
     font-size: 0.8em;
+    text-overflow:ellipsis;
+    overflow:hidden;
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    white-space: normal;
 }
 
 #browse-init, #browse-search-results, #browse-files, #browse-stickies {
     color: #333;
 }
 
+.browse-init-sticky .seeall {
+    float: right;
+    color: blue;
+    cursor: pointer;
+    margin-bottom: 15px;
+    font-weight: normal;
+}
+
 .search-result {
     display: flex;
-    padding: 5px 0px;
+    padding-bottom: 5px;
     width: 100%;
     justify-content: space-between;
     align-items: center;
@@ -270,6 +291,10 @@ h3 {
 }
 
 .search-result-options .song-options img {
+    margin-left: 10px;
+}
+
+.browse-search-tit .search-result-options .song-options img {
     margin-right: 10px;
 }
 
@@ -349,6 +374,11 @@ h3 {
     font-size: 0.8em;
 }
 
+.onesong-sticky {
+    flex: 20px;
+    text-align: right;
+}
+
 .pos-sec{
     color:black;
     display:inline-block;
@@ -356,6 +386,36 @@ h3 {
 
 .pos-sec-tot{
     color:grey;
+}
+
+#devices .device{
+    display: flex;
+    flex-direction: row;
+    padding: 10px;
+    background:white;
+    border-radius: 10px;
+    border: 1px #cccccc solid;
+    align-items: center;
+    overflow: hidden;
+    margin-bottom: 10px;
+    font-size: 0.8em;
+}
+
+#devices .device .device-main {
+    flex:1;
+}
+
+#devices .device .device-main input{
+    min-width: 300px;
+    margin-top: 5px;
+    background:#f7f7f7;
+}
+
+#devices .device .setit {
+    flex:10%;
+    text-align: right;
+    padding-right: 10px;
+    cursor: pointer;
 }
 
 .onesong-details {
@@ -609,3 +669,123 @@ h3 {
   -webkit-animation-name: bounce;
   animation-name: bounce;
 }
+
+#snackbar {
+    visibility: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #fff;
+    color: #000;
+    text-align: center;
+    border-radius: 2px;
+    padding: 16px;
+    position: fixed;
+    z-index: 10;
+    bottom: 30px;
+    font-size: 17px;
+  }
+  
+  #snackbar.show {
+    visibility: visible;
+    -webkit-animation: fadein 0.5s, fadeout 0.5s 2.5s;
+    animation: fadein 0.5s, fadeout 0.5s 2.5s;
+  }
+  
+  @-webkit-keyframes fadein {
+    from {bottom: 0; opacity: 0;} 
+    to {bottom: 30px; opacity: 1;}
+  }
+  
+  @keyframes fadein {
+    from {bottom: 0; opacity: 0;}
+    to {bottom: 30px; opacity: 1;}
+  }
+  
+  @-webkit-keyframes fadeout {
+    from {bottom: 30px; opacity: 1;} 
+    to {bottom: 0; opacity: 0;}
+  }
+  
+  @keyframes fadeout {
+    from {bottom: 30px; opacity: 1;}
+    to {bottom: 0; opacity: 0;}
+  }
+
+  /* search bar */
+
+  #search {
+    -webkit-box-align: center;
+    align-items: center;
+    display: -webkit-box;
+    display: flex;
+    background: white;
+    border-radius: 5px;
+    -webkit-box-pack: justify;
+    justify-content: space-between;
+    -webkit-transition: all 0.5s;
+    transition: all 0.5s;
+    width:100%;
+  }
+   
+  #search:hover, #search:focus {
+    background: #f7f7f7;
+  }
+  #search button,
+  #search input {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background: transparent;
+    border: 0;
+    color: inherit;
+    font: inherit;
+    outline: 0;
+  }
+  #search button {
+    cursor: pointer;
+    padding: 0 10px;
+    padding-top: 2px;
+  }
+
+  #search input {
+    -webkit-box-flex: 1;
+    flex: 1;
+  }
+
+  #search .spinner {
+    -webkit-animation: spinner 1s infinite linear;
+            animation: spinner 1s infinite linear;
+    display: none;
+    padding: 0 10px;
+    padding-top: 2px;
+  }
+   
+  #search.loading button {
+    display: none;
+  }
+  #search.loading .spinner {
+    display: block;
+  }
+   
+  @-webkit-keyframes spinner {
+    0% {
+      -webkit-transform: rotate(0deg);
+              transform: rotate(0deg);
+    }
+    100% {
+      -webkit-transform: rotate(360deg);
+              transform: rotate(360deg);
+    }
+  }
+   
+  @keyframes spinner {
+    0% {
+      -webkit-transform: rotate(0deg);
+              transform: rotate(0deg);
+    }
+    100% {
+      -webkit-transform: rotate(360deg);
+              transform: rotate(360deg);
+    }
+  }

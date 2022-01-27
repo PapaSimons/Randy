@@ -10,8 +10,9 @@
   "author": "Gideon",
   "license": "ISC",
   "dependencies": {
-    "album-art": ">1.0.4",
+    "album-art": "^1.0.4",
     "console-stamp": "^0.2.9",
+    "drivelist": "^9.2.4",
     "express": "^4.17.1",
     "filehound": "^1.17.1",
     "metaget": "^1.0.6",

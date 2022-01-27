@@ -17,6 +17,7 @@ var createPlayer = require('./lib/mpv-wrapper');
 var metaget = require("metaget");
 var cp = require('child_process');
 var fs = require("fs");
+var drivelist = require('drivelist');
 
 //vars
 var player = null;
@@ -104,6 +105,24 @@ app.post('/searchSongs', function (req, res) {
     playlist.searchSongs(req.body.keyword).then(function(rtn){
         res.json({"results":rtn});
     });
+});
+
+app.post('/getSettings', async function (req, res) {
+    res.header("Access-Control-Allow-Origin", "http://localhost");
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+    //return
+    console.log("getting settings");
+    var cursettings = playlist.getSettings();
+    var drives = await drivelist.list();
+    var devices = [];
+    drives.forEach((drive) => {
+        console.log(drive);
+        if (drive.mountpoints.length > 0 && drive.isUSB){
+            var device = {"name":drive.description, "size":drive.size, "path":drive.mountpoints[0].path};
+            devices.push(device);
+        }
+    });
+    res.json({"cursettings":cursettings, "devices":devices});
 });
 
 app.post('/getURLMeta', function (req, res) {
@@ -201,6 +220,11 @@ io.on('connection', function(socket){
       console.log('stick - ' + msg);
       playlist.addtosticky(msg);
     });
+
+    socket.on('unstick', function(msg){
+        console.log('unstick - ' + msg);
+        playlist.removesticky(msg);
+      });
     
     socket.on('randy', function(msg){
       console.log('randy');
@@ -233,7 +257,7 @@ function initRandy(){
         initmf();
         //load playlist
         playlist.getAllSongs().then(function(){
-            playlist.initPlaylist(3,emitplaylist).then(function(fsong){
+            playlist.initPlaylist(3,emitplaylist,emitsticky).then(function(fsong){
                 if (player != null){
                     //console.log("initPlaylist - loading first song - " + fsong.songfile);
                     playsong(fsong); 
@@ -266,6 +290,10 @@ process.on('uncaughtException', function (err) {
 function emitplaylist(){
     console.log('playlist changed ' + playlist.getPlaying());
     io.sockets.emit('playlist', {playlist:playlist.getPlayList(), playing:playlist.getPlaying()});
+}
+
+function emitsticky(){
+    io.sockets.emit('newstickies', {});
 }
 
 function createNewPlayer(){

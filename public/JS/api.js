@@ -26,6 +26,9 @@ var api = {
     setMusicFolder: function (mf){
         return callAPI("setMusicFolder",{mf:mf});
     },
+    getSettings: function (mf){
+        return callAPI("getSettings",{});
+    },
     powerOff: function (){
         return callAPI("powerOff",{});
     }

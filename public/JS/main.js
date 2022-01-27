@@ -46,6 +46,8 @@ function debounce(func, wait, immediate) {
 
 $('#search-bar').keyup(debounce(function(event) {
     if (ValidURL($('#search-bar').val())){
+        $('#browse-search-url').fadeOut();
+        $('#search').addClass('loading');
         api.getURLMeta($('#search-bar').val()).then(function(meta){
            if (meta.title){
                templist.search = [$('#search-bar').val()];
@@ -55,28 +57,32 @@ $('#search-bar').keyup(debounce(function(event) {
                 ht += "<img src='" + meta.img + "'/>";
                 ht += "</div>";
                 ht += "<div class='browse-search-tit'>";
-                ht += meta.title;
-                ht += "</br></br>";
+                ht += "<span class='tit'>" + meta.title + "</span>";
+                ht += "</br>";
                 ht += "<span class='desc'>" + meta.description + "</span>";
                 ht += "</br>";
                 ht += songoptions('search',0);
                 ht += "</div>";
                 $('#browse-search-url').html(ht); 
            } else {
-               $('#browse-search-url').html("Not found, try another url!"); 
+               $('#browse-search-url').html("URL not found, try another url!"); 
            }
            $('#browse-search-url').fadeIn();
+           $('#search').removeClass('loading');
         });
      } else {
          if ($('#search-bar').val().length < 2){
              browsepane("init");
          } else {
+            $('#search').addClass('loading');
              api.searchSongs($('#search-bar').val()).then(function(rtn){
                 var res = rtn.results;     
                 console.log("search results: " + JSON.stringify(res));
                  var ht = "";
+                 var hasresults = false;
                  ht += "<img class='clickable' onclick='browsepane(\"init\");' src='IMG/Arrow_Right_MD.svg'/>";
                  if (res.radiostations.length > 0){
+                    hasresults = true;
                     templist.searchradiostations = [];
                     ht += "<h3>Radio Stations</h3>";
                     for (i in res.radiostations){
@@ -91,6 +97,7 @@ $('#search-bar').keyup(debounce(function(event) {
                     }
                 }
                  if (res.albums.length > 0){
+                    hasresults = true;
                      templist.searchalbums = [];
                      ht += "<h3>Albums</h3>";
                      for (i in res.albums){
@@ -106,6 +113,7 @@ $('#search-bar').keyup(debounce(function(event) {
                  }
 
                  if (res.files.length > 0){
+                    hasresults = true;
                      templist.searchsongs = [];
                      ht += "<h3>Songs</h3>";
                      for (i in res.files){
@@ -116,7 +124,12 @@ $('#search-bar').keyup(debounce(function(event) {
                         ht += "</div>";
                      }
                  }
+                 if (!hasresults){
+                    ht += "<h3>No results...</h3>";
+                 }
+                
                 $('#browse-search-results').html(ht); 
+                $('#search').removeClass('loading');
                 browsepane('search-results');
             });
          }
@@ -195,6 +208,10 @@ socket.on('duration', function(obj){
     cursong.find('.onesong-len').attr("len",obj);
 });
 
+socket.on('newstickies', function(obj){
+    populateStickies($('.browse-init-sticky'), 5);
+});
+
 function rotateit(curpos){
     setTimeout(function(){ 
         var diff = Math.abs(curpos - lastpos);
@@ -237,7 +254,7 @@ socket.on('nowplaying', function(obj){
     var sign = "";
     if (!ValidAAURL(al)){
         al = 'https://doodleipsum.com/500x500?n=' + Math.random();
-        sign = '<span>No Album Cover...?<br/>Randy got you covered!</span>';
+        sign = '<span>No Album Cover...?<br/>Randy got you covered! (<a href="https://doodleipsum.com/" target="_blank">doodleipsum</a>)</span>';
     }
     if (cursong != null){
         cursong.find(".onesong-tit").html(obj.title);
@@ -289,6 +306,7 @@ socket.on('playlist', function(objj){
        ns += "<div class='onesong-artist' title='" + artistalbum + "'>" + artistalbum + "</div>";
        ns += "</div>";
        ns += "<div class='onesong-len' len='" + len + "'>" + secondsToHms(len) + "</div>";
+       //ns += "<div class='onesong-sticky' class='clickable' onclick='doSongOption(\"stick\",\"playlist\",\""+i+"\")'><img src='IMG/Bookmark_onesong.svg'/></div>";
        ns += "</div>";
        plist.append(ns);
    } 
@@ -397,28 +415,15 @@ function browsepane(mode){
             });
             break;
         case "init":
-            api.getStickyList(5).then(function(rtn){
-                var res = rtn.results;     
-                var ht = "";
-                 if (res.length > 0){
-                     templist.initstickies = [];
-                     ht += "<h3>Sticky</h3>";
-                     for (i in res){
-                         templist.initstickies.push(res[i].path);
-                         ht += "<div class='search-result'>";
-                         ht += "<div class='search-result-name clickablelink' onclick='doSongOption(\"playnow\",\"initstickies\",\""+i+"\")'>" + res[i].name + "</div>"; 
-                         ht += "<div class='search-result-options'>" + songoptions('initstickies',i) + "</div>";
-                         ht += "</div>";
-                     }
-                 }
-                $('.browse-init-sticky').html(ht); 
-            });
+            //populate stickies
+            populateStickies($('.browse-init-sticky'), 5);
+            //populate random albums
             api.getRandomAlbums(8).then(function(rtn){
                 var res = rtn.results;     
                 var ht = "";
                  if (res.albums.length > 0){
                      templist.initralbums = [];
-                     ht += "<h3>Albums</h3>";
+                     ht += "<h3>Random Albums</h3>";
                      for (i in res.albums){
                          templist.initralbums.push(res.albums[i].album);
                          ht += "<img alt=\"" + res.albums[i].name + "\" title=\"" + res.albums[i].name + "\" src=\"" + encodeURI(res.albums[i].albumArt) + "\" onclick='doSongOption(\"playnow\",\"initralbums\",\""+i+"\")'/>";
@@ -428,9 +433,64 @@ function browsepane(mode){
             });
         break;
         case "settings":
+            api.getSettings().then(function(rtn){
+                var res = rtn;     
+                var ht = "";
+                templist.connectedDevices = [];
+                var founddev = false;
+                if (res.devices.length > 0){
+                     for (i in res.devices){
+                        templist.connectedDevices.push(res.devices[i].path);
+                        ht += "<div class='device'>" + res.devices[i].name + "<br/>" + formatBytes(res.devices[i].size,2);
+                        if (res.devices[i].path == res.cursettings.musicfolders){
+                           founddev = true;
+                           ht += "<div class='setit' onclick='changemfd("+i+");'><img src='/IMG/Check_16.svg')/></div>";
+                        } else {
+                           ht += "<div class='setit' onclick='changemfd("+i+");'>Set</div>";
+                        }
+                        ht += "</div>";
+                     }
+                 }
+                 ht += "<div class='device'><div class='device-main'>Custom path (folder, NAS..)<br/>";
+                 ht += "<input class='settings-inp' type='text' id='mf_inp' placeholder='Path to music folder'";
+                 console.log('templist.connectedDevices - ' + templist.connectedDevices);
+                 if (!founddev){
+                    ht += " value='" + res.cursettings.musicfolders + "'/></div>";
+                    ht += "<div class='setit' onclick='changemf();'><img src='/IMG/Check_16.svg')/></div>";
+                 } else {
+                    ht += "/></div>";
+                    ht += "<div class='setit' onclick='changemf();'>Set</div>";
+                 }
+                 ht += "</div>";
+                $('#devices').html(ht); 
+            });
             console.log('in settings');
         break;
     }
+}
+
+function populateStickies(ele, lim){
+    console.log('populating stickies');
+    api.getStickyList(lim).then(function(rtn){
+        var res = rtn.results;     
+        var ht = "";
+         if (res.length > 0){
+             templist.initstickies = [];
+             if (res.length >= lim){
+                ht += "<span class='h3'>Sticky</span><span class='h3 seeall' onclick='browsepane(\"stickies\")'>See All</span>";
+             } else {
+                ht += "<h3>Sticky</h3>";
+             }
+             for (i in res){
+                 templist.initstickies.push(res[i].path);
+                 ht += "<div class='search-result'>";
+                 ht += "<div class='search-result-name clickablelink' onclick='doSongOption(\"playnow\",\"initstickies\",\""+i+"\")'>" + res[i].name + "</div>"; 
+                 ht += "<div class='search-result-options'>" + songoptions('initstickies',i) + "</div>";
+                 ht += "</div>";
+             }
+         }
+        ele.html(ht); 
+    });
 }
 
 //knob//
@@ -459,20 +519,38 @@ $("#seekdial").bind("mousedown touchstart" ,function() {
 
 function changemf(){
     var mf = $('#mf_inp').val();
-    $("#mf_err").html("");
     if (mf !== ''){
-        $("#mf_but").addClass("running");
         api.setMusicFolder([$('#mf_inp').val()]).then(function(ret){
-            $("#mf_but").removeClass("running");
+            browsepane('settings');
             if (ret.success !== 200){
-                $("#mf_err").html("Try another folder");
+                showToast('Something went wrong');
+            } else {
+                showToast('New Music Source Set!');
             }
         });;
     }
 }
 
+function changemfd(i){
+    api.setMusicFolder([templist.connectedDevices[i]]).then(function(ret){
+        browsepane('settings');
+        if (ret.success !== 200){
+            showToast('Something went wrong');
+        } else {
+            showToast('New Music Source Set!');
+        }
+    });
+}
+
 function poweroff(){
     api.powerOff();
+}
+
+function showToast(txt){
+    $("#snackbar").html(txt);
+    var x = document.getElementById("snackbar");
+    x.className = "show";
+    setTimeout(function(){ x.className = x.className.replace("show", ""); }, 2000);
 }
 
 //album view//
@@ -489,8 +567,14 @@ function songoptions(obj,i){
         ht += "<img class='clickable' onclick='doSongOption(\"playnow\",\""+obj+"\",\""+i+"\")' src='IMG/Play.svg'/>";
     }
     ht += "<img class='clickable' onclick='doSongOption(\"addtolist\",\""+obj+"\",\""+i+"\")' src='IMG/First_Aid.svg'/>";
+    
+    //add bookmark to non sticky
     if (obj.indexOf("stickies") == -1){
         ht += "<img class='clickable' onclick='doSongOption(\"stick\",\""+obj+"\",\""+i+"\")' src='IMG/Bookmark.svg'/>";
+    }
+    //add delete to stickies
+    if (obj.indexOf("stickies") != -1){
+        ht += "<img class='clickable' onclick='doSongOption(\"unstick\",\""+obj+"\",\""+i+"\")' src='IMG/Trash_Full.svg'/>";
     }
     ht += "</div>";
     return ht;
@@ -500,12 +584,14 @@ function doSongOption(op,opt,i){
     console.log("emitting - " + op + " , urls: " + templist[opt][i]);
     socket.emit(op,templist[opt][i]);
     //on mobile go back to playlist
-    if (op != "stick"){
+    if (op == "playnow"){
         $('#browse-pane').toggleClass('mobilehideme');
         $('#playlist-pane').toggleClass('mobilehideme');
-    } else {
-        browsepane("stickies");
-        Bounce($('#stickybutt'));
+    } else if (op == "addtolist"){
+        showToast('Adding to the end of the playlist');
+    } else if (op == "stick"){
+        Bounce($('#homebutt'));
+        showToast('Adding to sticky bookmarks');
     }
 }
 
@@ -531,6 +617,12 @@ function ValidURL(str) {
   regexp =  /^(?:(?:https?|ftp):\/\/)?(?:(?!(?:10|127)(?:\.\d{1,3}){3})(?!(?:169\.254|192\.168)(?:\.\d{1,3}){2})(?!172\.(?:1[6-9]|2\d|3[0-1])(?:\.\d{1,3}){2})(?:[1-9]\d?|1\d\d|2[01]\d|22[0-3])(?:\.(?:1?\d{1,2}|2[0-4]\d|25[0-5])){2}(?:\.(?:[1-9]\d?|1\d\d|2[0-4]\d|25[0-4]))|(?:(?:[a-z\u00a1-\uffff0-9]-*)*[a-z\u00a1-\uffff0-9]+)(?:\.(?:[a-z\u00a1-\uffff0-9]-*)*[a-z\u00a1-\uffff0-9]+)*(?:\.(?:[a-z\u00a1-\uffff]{2,})))(?::\d{2,5})?(?:\/\S*)?$/;
   return regexp.test(str);
 }
+
+function formatBytes(a,b=2,k=1024) {
+    with(Math){let d=floor(log(a)/log(k));
+    return 0==a?"0 Bytes":parseFloat((a/pow(k,d)).toFixed(max(0,b)))+" "+["Bytes","KB","MB","GB","TB","PB","EB","ZB","YB"][d]}
+}
+
 
 function ValidAAURL(str){
     return (ValidURL(str) || str.indexOf("/mnt/") == 0);
