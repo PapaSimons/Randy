@@ -16,7 +16,7 @@ window.onload = function() {
         browsepane("zen");
     }
     $('#browse-pane').css("visibility","visible");
-    $('#browse-pane').addClass('mobilehideme');
+    $('#browse-pane').addClass('mobilehideme');    
 };
 
 var rotateAnime = anime({
@@ -424,10 +424,12 @@ function browsepane(mode){
                  if (res.albums.length > 0){
                      templist.initralbums = [];
                      ht += "<h3>Random Albums</h3>";
+                     ht += "<div class='random-albums'>";
                      for (i in res.albums){
                          templist.initralbums.push(res.albums[i].album);
-                         ht += "<img alt=\"" + res.albums[i].name + "\" title=\"" + res.albums[i].name + "\" src=\"" + encodeURI(res.albums[i].albumArt) + "\" onclick='doSongOption(\"playnow\",\"initralbums\",\""+i+"\")'/>";
+                         ht += "<img alt=\"" + res.albums[i].name + "\" title=\"" + res.albums[i].name + "\" src=\"" + encodeURI(res.albums[i].albumArt) + "\"  onerror=\"this.onerror=null;fixBroken(this,'initralbums','"+i+"','"+res.albums[i].name+"');\" onclick='doSongOption(\"playnow\",\"initralbums\",\""+i+"\")'/>";
                      }
+                     ht += "</div>";
                  }
                 $('.browse-init-randomalbums').html(ht); 
             });
@@ -452,10 +454,10 @@ function browsepane(mode){
                      }
                  }
                  ht += "<div class='device'><div class='device-main'>Custom path (folder, NAS..)<br/>";
-                 ht += "<input class='settings-inp' type='text' id='mf_inp' placeholder='Path to music folder'";
+                 ht += "<input class='settings-inp' onkeyup='$(\".setit\").html(\"Set\");' type='text' id='mf_inp' placeholder='Path to music folder'";
                  console.log('templist.connectedDevices - ' + templist.connectedDevices);
-                 if (!founddev){
-                    ht += " value='" + res.cursettings.musicfolders + "'/></div>";
+                 if (!founddev && res.cursettings.musicfolders !== null){
+                    ht += " value='" + res.cursettings.musicfolders[0] + "'/></div>";
                     ht += "<div class='setit' onclick='changemf();'><img src='/IMG/Check_16.svg')/></div>";
                  } else {
                     ht += "/></div>";
@@ -528,6 +530,8 @@ function changemf(){
                 showToast('New Music Source Set!');
             }
         });;
+    } else {
+        showToast('Enter a music source');
     }
 }
 
@@ -560,21 +564,29 @@ function showAlbum(list,i){
     browsepane('album');
 }
 
+//fix broken images
+function fixBroken(ele,list,i,name){
+    console.log('fixing image - ' + templist[list][i]);
+    //templist[list][i];
+    $(ele).replaceWith("<div class='placeholder'><span>"+name+"</span></div>");
+    $(ele).height = $(ele).width;
+}
+
 //song options//
 function songoptions(obj,i){
     var ht = "<div class='song-options'>";
     if (obj.indexOf("album") != -1 || obj.indexOf("search") != -1){
-        ht += "<img class='clickable' onclick='doSongOption(\"playnow\",\""+obj+"\",\""+i+"\")' src='IMG/Play.svg'/>";
+        ht += "<img class='clickable' title='Play' onclick='doSongOption(\"playnow\",\""+obj+"\",\""+i+"\")' src='IMG/Play.svg'/>";
     }
-    ht += "<img class='clickable' onclick='doSongOption(\"addtolist\",\""+obj+"\",\""+i+"\")' src='IMG/First_Aid.svg'/>";
+    ht += "<img class='clickable' title='Add to Playlist' onclick='doSongOption(\"addtolist\",\""+obj+"\",\""+i+"\")' src='IMG/First_Aid.svg'/>";
     
     //add bookmark to non sticky
     if (obj.indexOf("stickies") == -1){
-        ht += "<img class='clickable' onclick='doSongOption(\"stick\",\""+obj+"\",\""+i+"\")' src='IMG/Bookmark.svg'/>";
+        ht += "<img class='clickable' title='Add to Stickies' onclick='doSongOption(\"stick\",\""+obj+"\",\""+i+"\")' src='IMG/Bookmark.svg'/>";
     }
     //add delete to stickies
     if (obj.indexOf("stickies") != -1){
-        ht += "<img class='clickable' onclick='doSongOption(\"unstick\",\""+obj+"\",\""+i+"\")' src='IMG/Trash_Full.svg'/>";
+        ht += "<img class='clickable' title='Remove' onclick='doSongOption(\"unstick\",\""+obj+"\",\""+i+"\")' src='IMG/Trash_Full.svg'/>";
     }
     ht += "</div>";
     return ht;

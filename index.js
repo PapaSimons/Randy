@@ -116,7 +116,6 @@ app.post('/getSettings', async function (req, res) {
     var drives = await drivelist.list();
     var devices = [];
     drives.forEach((drive) => {
-        console.log(drive);
         if (drive.mountpoints.length > 0 && drive.isUSB){
             var device = {"name":drive.description, "size":drive.size, "path":drive.mountpoints[0].path};
             devices.push(device);
@@ -259,14 +258,13 @@ function initRandy(){
         playlist.getAllSongs().then(function(){
             playlist.initPlaylist(3,emitplaylist,emitsticky).then(function(fsong){
                 if (player != null){
-                    //console.log("initPlaylist - loading first song - " + fsong.songfile);
                     playsong(fsong); 
                 }
             }).then(function(err){
-               //console.log("error while initing playlist - " + err); 
+               console.log("error while initing playlist - " + err); 
             });
         }).then(function(err){
-           //console.log("error while getting all songs - " + err); 
+           console.log("error while getting all songs - " + err); 
         });
     }
     //create the player instance
@@ -414,12 +412,12 @@ function timeout(ms) {
 
 async function playsong(songobj){
     console.log("songobj - " + songobj);
-    if (songobj !== null){
+    if (songobj && songobj !== null){
         //check if mpv is alive
         try {
+            console.log("Loading: " + songobj.songfile);
             if (songobj.hasOwnProperty('songfile')){
                 //load the file
-                console.log("Loading: " + songobj.songfile);
                 isloaded = false;
                 //test for socket timeout
                 clearTimeout(sockettimeout);
