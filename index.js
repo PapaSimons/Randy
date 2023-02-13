@@ -117,8 +117,17 @@ app.post('/getSettings', async function (req, res) {
     var devices = [];
     drives.forEach((drive) => {
         if (drive.mountpoints.length > 0 && drive.isUSB){
-            var device = {"name":drive.description, "size":drive.size, "path":drive.mountpoints[0].path};
-            devices.push(device);
+            if (drive.mountpoints.length > 1){
+                var ind = 1;
+                drive.mountpoints.forEach((mountpoint) => {
+                    var device = {"name":drive.description + ' | partition ' + ind, "size":drive.size, "path":mountpoint.path};
+                    devices.push(device);
+                    ind++;
+                });
+            } else {
+                var device = {"name":drive.description, "size":drive.size, "path":mountpoints[0].path};
+                devices.push(device);
+            }   
         }
     });
     res.json({"cursettings":cursettings, "devices":devices});
@@ -296,8 +305,8 @@ function emitsticky(){
 
 function createNewPlayer(){
     //create player instance
-    //createPlayer(['--no-video']).then(function(newplayer){
-    createPlayer({ args: ['--af-clr','--vf-clr','--vid=no','--ytdl-format=best'] }, (err, newplayer) => {
+    createPlayer({ args: ['--no-config', '--af-clr','--vf-clr','--vid=no','--no-video', 'script-opts=ytdl_hook-ytdl_path=yt-dlp',
+                          '--audio-display=no','--no-initial-audio-sync','--ytdl-format=best'] }, (err, newplayer) => {
         if (err) {
             console.error("Error creating player - " + err);
         } else {

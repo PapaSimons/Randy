@@ -20,14 +20,14 @@ echo "-------------------------------------------"
 echo "######>>> getting latest youtube-dl"
 echo "-------------------------------------------"
 
-wget https://yt-dl.org/downloads/latest/youtube-dl -O /usr/local/bin/youtube-dl
-chmod a+rx /usr/local/bin/youtube-dl
+sudo wget https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -O /usr/local/bin/yt-dlp
+sudo chmod a+rx /usr/local/bin/yt-dlp
 
 echo "-------------------------------------------"
 echo "######>>> installing packages"
 echo "-------------------------------------------"
 
-apt-get install -y nginx mpv exfat-fuse exfat-utils ntfs-3g
+apt-get install -y nginx mpv exfat-fuse exfat-utils ntfs-3g git
 
 echo "-------------------------------------------"
 echo "######>>> installing nodejs"
@@ -35,6 +35,18 @@ echo "-------------------------------------------"
 
 sudo curl -sL https://deb.nodesource.com/setup_current.x | sudo bash -
 apt-get install -y nodejs
+
+echo "-------------------------------------------"
+echo "######>>> Download the Randy github repo"
+echo "-------------------------------------------"
+
+git clone https://github.com/PapaSimons/Randy.git
+
+echo "-------------------------------------------"
+echo "######>>> installing Randy Dependencies"
+echo "-------------------------------------------" 
+
+npm install ./Randy
 
 echo "-------------------------------------------"
 echo "######>>> setting usb soundcard"
@@ -117,7 +129,7 @@ Description=Mount USB Drive on %i
 [Service]
 Type=oneshot
 RemainAfterExit=true
-ExecStart=/usr/bin/pmount /dev/%i /media/%i
+ExecStart=/usr/bin/pmount -u 0000 /dev/%i /media/%i
 ExecStop=/usr/bin/pumount /dev/%i
 EOF
 
