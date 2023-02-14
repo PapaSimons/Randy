@@ -138,13 +138,12 @@ h3, .h3 {
     display: flex;
     flex-direction: row;
     flex-wrap: wrap;
+    gap: 0.5rem 1.5%;
 }
 
 .browse-init-randomalbums img {
     flex: 23%;
     width: 23%;
-    margin-right: 2%;
-    margin-bottom: 2%;
     cursor: pointer;
     background:#f7f7f7;
 }

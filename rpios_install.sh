@@ -17,7 +17,7 @@ apt-get update -y
 apt-get dist-upgrade -y
 
 echo "-------------------------------------------"
-echo "######>>> getting latest youtube-dl"
+echo "######>>> getting latest yt-dlp"
 echo "-------------------------------------------"
 
 sudo wget https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -O /usr/local/bin/yt-dlp
