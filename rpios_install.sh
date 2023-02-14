@@ -149,6 +149,12 @@ env PATH=$PATH:/usr/bin /usr/local/lib/node_modules/pm2/bin/pm2 startup systemd 
 pm2 save
 
 echo "-------------------------------------------"
+echo "######>>> set up spotify"
+echo "-------------------------------------------"
+
+curl -sL https://dtcooper.github.io/raspotify/install.sh | sh
+
+echo "-------------------------------------------"
 echo "######>>> remove un-needed packages"
 echo "-------------------------------------------"
 
