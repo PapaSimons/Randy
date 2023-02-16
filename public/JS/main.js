@@ -606,9 +606,7 @@ function doSongOption(op,opt,i){
         showToast('Adding to sticky bookmarks');
     } else if (op == "unstick"){
         showToast('Removing from sticky bookmarks');
-        if (curbrowserpanemode == 'stickies'){
-            browsepane('stickies');
-        }
+        browsepane(curbrowserpanemode);
     }
 }
 

@@ -37,10 +37,16 @@ sudo curl -sL https://deb.nodesource.com/setup_current.x | sudo bash -
 apt-get install -y nodejs
 
 echo "-------------------------------------------"
-echo "######>>> Download the Randy github repo"
+echo "######>>> Download the latest release of Randy"
 echo "-------------------------------------------"
 
-git clone https://github.com/PapaSimons/Randy.git
+LOCATION=$(curl -s https://api.github.com/repos/papasimons/Randy/releases/latest \
+| grep "tag_name" \
+| awk '{print "https://github.com/papasimons/Randy/archive/" substr($2, 2, length($2)-3) ".tar.gz"}') \
+; curl -L -o randy_release.tar.gz $LOCATION
+
+mkdir Randy
+tar xvfz randy_release.tar.gz --strip 1 -C Randy
 
 echo "-------------------------------------------"
 echo "######>>> installing Randy Dependencies"
