@@ -119,6 +119,13 @@ http {
             proxy_set_header Upgrade \$http_upgrade;
             proxy_set_header Connection \"upgrade\";
         }
+
+        error_page 404 403 402 500 502 503 504 /404.html;
+
+        location = /404.html {
+            root /root/home/Randy/public;
+            internal;
+        }
     }
 }
 EOF
