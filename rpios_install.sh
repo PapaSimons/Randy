@@ -27,7 +27,7 @@ echo "-------------------------------------------"
 echo "######>>> installing packages"
 echo "-------------------------------------------"
 
-apt-get install -y nginx mpv exfat-fuse exfat-utils ntfs-3g git
+apt-get install -y mpv exfat-fuse exfat-utils ntfs-3g git
 
 echo "-------------------------------------------"
 echo "######>>> installing nodejs"
@@ -78,56 +78,6 @@ ff02::1         ip6-allnodes
 ff02::2         ip6-allrouters
 
 127.0.1.1       randy
-EOF
-
-echo "-------------------------------------------"
-echo "######>>> setting nginx"
-echo "-------------------------------------------"
-
-cat <<EOF > /etc/nginx/nginx.conf
-worker_processes  1;
-
-events {
-    worker_connections  1024;
-}
-
-http {
-    include       mime.types;
-    default_type  application/octet-stream;
-
-    upstream backend {
-        server localhost:8888;
-    }
-
-    server {
-        listen 80;
-        server_name randy;
-
-        root /root/home/Randy/public;
-
-        location / {
-            try_files \$uri @backend;
-        }
-
-        location @backend {
-            proxy_pass http://backend;
-            proxy_set_header X-Real-IP \$remote_addr;
-            proxy_set_header Host \$host;
-            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-            # Following is necessary for Websocket support
-            proxy_http_version 1.1;
-            proxy_set_header Upgrade \$http_upgrade;
-            proxy_set_header Connection \"upgrade\";
-        }
-
-        error_page 404 403 402 500 502 503 504 /404.html;
-
-        location = /404.html {
-            root /root/home/Randy/public;
-            internal;
-        }
-    }
-}
 EOF
 
 echo "-------------------------------------------"

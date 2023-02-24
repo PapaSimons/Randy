@@ -22,7 +22,7 @@ var drivelist = require('drivelist');
 //vars
 var player = null;
 var psocket = null;
-var port = process.env.PORT || 8888;
+var port = process.env.PORT || 80;
 var isloaded = false;
 var sockettimeout = null;
 var seekable = true;
