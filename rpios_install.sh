@@ -27,7 +27,7 @@ echo "-------------------------------------------"
 echo "######>>> installing packages"
 echo "-------------------------------------------"
 
-apt-get install -y mpv exfat-fuse exfat-utils ntfs-3g git
+apt-get install -y mpv exfat-fuse exfat-utils ntfs-3g
 
 echo "-------------------------------------------"
 echo "######>>> installing nodejs"
