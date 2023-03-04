@@ -306,7 +306,7 @@ function emitsticky(){
 function createNewPlayer(){
     //create player instance
     createPlayer({ args: ['--no-config', '--af-clr','--vf-clr','--vid=no','--no-video', 'script-opts=ytdl_hook-ytdl_path=yt-dlp',
-                          '--audio-display=no','--no-initial-audio-sync','--ytdl-format=best'] }, (err, newplayer) => {
+                          '--audio-display=no','--no-initial-audio-sync','--ytdl-format=bestaudio/best'] }, (err, newplayer) => {
         if (err) {
             console.error("Error creating player - " + err);
         } else {
