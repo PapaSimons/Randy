@@ -2,7 +2,7 @@ Welcome to Randy!
 
 Randy is a minimalist music streamer and player based on Nodejs and MPV.
 
-![Randy Player July18](/images/Randy.png)
+![Randy Player](/public/IMG/Randy_screenshot1.png)
 
 # Play anything
 
