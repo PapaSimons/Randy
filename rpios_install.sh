@@ -14,7 +14,7 @@ echo "######>>> updating and upgrading packages"
 echo "-------------------------------------------"
 
 apt-get update -y
-apt-get dist-upgrade -y
+apt-get upgrade -y
 
 echo "-------------------------------------------"
 echo "######>>> getting latest yt-dlp"
@@ -81,7 +81,7 @@ ff02::2         ip6-allrouters
 EOF
 
 echo "-------------------------------------------"
-echo "######>>> setting automount"
+echo "######>>> setting automount usb drives"
 echo "-------------------------------------------"
 
 apt-get install -y pmount
@@ -102,14 +102,29 @@ ACTION=="remove",KERNEL=="sd[a-z][0-9]*",SUBSYSTEMS=="usb",RUN+="/bin/systemctl 
 EOF
 
 echo "-------------------------------------------"
-echo "######>>> setting up pm2"
+echo "######>>> setting up systemd node deamon"
 echo "-------------------------------------------"
 
-npm install pm2@latest -g
-pm2 start /home/pi/Randy/index.js
-pm2 startup
-env PATH=$PATH:/usr/bin /usr/local/lib/node_modules/pm2/bin/pm2 startup systemd -u pi --hp /home/pi
-pm2 save
+cat <<EOF > /etc/systemd/system/randy-node.service
+[Unit]
+Description=Randy nodejs application daemon
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/node /home/pi/Randy/index.js
+Restart=on-failure
+Type=simple
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=randy-node
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl daemon-reload
+systemctl start randy-node
+systemctl enable randy-node
 
 echo "-------------------------------------------"
 echo "######>>> set up spotify"
