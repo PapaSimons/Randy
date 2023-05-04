@@ -1,3 +1,8 @@
+// ==============================================
+// Randy Player
+// built by : Gideon Simons, 2018-2023
+// ==============================================
+
 var cursong = null;
 var prevbrowserpanemode = null;
 var curbrowserpanemode = null;

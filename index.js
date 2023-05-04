@@ -1,6 +1,6 @@
 // ==============================================
-// Randy POC
-// built by : Gideon Simons, 2018
+// Randy Player
+// built by : Gideon Simons, 2018-2023
 // ==============================================
 
 //consol log with timestamp
@@ -22,7 +22,7 @@ var drivelist = require('drivelist');
 //vars
 var player = null;
 var psocket = null;
-var port = process.env.PORT || 80;
+var port = process.env.PORT || process.argv[2] || 80;
 var isloaded = false;
 var sockettimeout = null;
 var seekable = true;
@@ -249,7 +249,7 @@ http.listen(port, function(){
     console.log("Randy on port " + port);
   });
   
-console.log("Welcome to Randy - localhost:8888 - !");
+console.log("Welcome to Randy - localhost:" + port + " - !");
   
 ////--- init the player ---////
 
@@ -306,7 +306,7 @@ function emitsticky(){
 function createNewPlayer(){
     //create player instance
     createPlayer({ args: ['--no-config', '--af-clr','--vf-clr','--vid=no','--no-video', 'script-opts=ytdl_hook-ytdl_path=yt-dlp',
-                          '--audio-display=no','--no-initial-audio-sync','--ytdl-format=bestaudio/best'] }, (err, newplayer) => {
+                          '--audio-display=no','--no-initial-audio-sync','--ytdl-format=bestaudio'] }, (err, newplayer) => {
         if (err) {
             console.error("Error creating player - " + err);
         } else {

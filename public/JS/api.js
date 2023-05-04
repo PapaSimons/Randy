@@ -1,3 +1,8 @@
+// ==============================================
+// Randy Player
+// built by : Gideon Simons, 2018-2023
+// ==============================================
+
 var api = {
     /* host url */
     hurl:window.location.origin + "/",

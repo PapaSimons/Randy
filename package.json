@@ -4,7 +4,6 @@
   "description": "Randy music player",
   "main": "index.js",
   "start": "index.js",
-  "type": "commonjs",
   "scripts": {
     "start": "node index.js"
   },
