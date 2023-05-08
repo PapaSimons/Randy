@@ -2,7 +2,9 @@ Welcome to Randy!
 
 Randy is a minimalist music streamer and player for raspberry pi, linux and macos.
 
-![Randy Player](/public/IMG/Randy_screenshot1.png)
+
+<img width="1103" alt="image" src="https://user-images.githubusercontent.com/344467/236752516-34a21b4c-8e5e-47d3-b883-3935d08ccf0f.png">
+
 
 ### Play anything
 
