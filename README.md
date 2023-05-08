@@ -52,6 +52,10 @@ If everything goes well, you can go to a computer or mobile browser on a device 
 
 **Note on DACs** - Randy installation is currently set to a USB DAC, if you have an i2s HAT DAC or something else you can follow the manufacturer instructions to set it up on raspberry pi OS. [Here is a great tutorial for alloboss](https://howtohifi.com/how-to-set-up-allo-boss-dac-hat-headless-raspberry-pi/)
 
+**On Other Linux devices**
+
+Coming soon!
+
 **On Macos**
 
 Coming soon!
