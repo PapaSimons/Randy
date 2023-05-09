@@ -152,7 +152,6 @@ $('#top-icon-menu-mobile').on('click', function(){
     browsepane("init");
     $('#browse-pane').toggleClass('mobilehideme');
     $('#playlist-pane').toggleClass('mobilehideme');
-    $('.browse-top-back-icon').toggleClass('mobilehideme');
 });
 
 $('#top-icon-menu').on('click', function(){
@@ -168,7 +167,6 @@ $('.browse-top-back-icon').on('click', function(){
     //case for mobile
     $('#browse-pane').toggleClass('mobilehideme');
     $('#playlist-pane').toggleClass('mobilehideme');
-    $('.browse-top-back-icon').toggleClass('mobilehideme');
 });
 
 
@@ -252,7 +250,7 @@ socket.on('pos', function(obj){
 });
 
 socket.on('nowplaying', function(obj){
-    console.log("now playing: " + obj.title + " album art - " + JSON.stringify(obj.albumart));
+    console.log("now playing: " + obj.title + ", album art - " + JSON.stringify(obj.albumart));
     //console.log("album: " + obj.album);
     document.title = obj.title;
     var al = encodeURI(obj.albumart);

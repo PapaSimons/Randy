@@ -35,10 +35,17 @@ This is a fun project with lots of possible enhancements :)
 
 **On Raspberry PI**
 
+<<<<<<< Updated upstream
 Install [Raspberry Pi OS lite](https://github.com/PapaSimons/Randy/wiki#raspberry-pi-os-lite-installation) on a SD card and boot it up on your raspberry pi device.
 [ssh](https://github.com/PapaSimons/Randy/wiki#ssh-into-the-device) into the new Pi and type in the following commands to download and run the install script.
 
 **Note** After the installation the hostname will be 'randy' and unless you change username and password they will stay as 'pi' and 'raspberry'.
+=======
+Install [Raspberry Pi OS lite](https://www.raspberrypi.com/software/) on a SD card and boot it up on your raspberry pi device.
+[ssh](https://linuxhint.com/raspberry-pi-headless-setup-with-raspberry-pi-imager/) into the new Pi and type in the following commands to download and run the install script.
+
+**Note** - After the installation the hostname will be 'randy' and unless you change username and password they will stay as 'pi' and 'raspberry'.
+>>>>>>> Stashed changes
 
 ```sh
 curl -L https://raw.githubusercontent.com/PapaSimons/Randy/master/rpios_install.sh -o install.sh

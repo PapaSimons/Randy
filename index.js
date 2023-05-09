@@ -269,10 +269,10 @@ function initRandy(){
                 if (player != null){
                     playsong(fsong); 
                 }
-            }).then(function(err){
+            }).catch(function(err){
                console.log("error while initing playlist - " + err); 
             });
-        }).then(function(err){
+        }).catch(function(err){
            console.log("error while getting all songs - " + err); 
         });
     }
@@ -329,17 +329,31 @@ function createNewPlayer(){
                     io.sockets.emit('duration', t);
                 }
             });
-            //player.observeProperty('audio-params', t => console.log('audio-params: ' + JSON.stringify(t)));
+            player.observeProperty('audio-out-params', function(t){
+                if (t && t != null){
+                    console.log('audio-out-params: ' + JSON.stringify(t))
+                }
+            }); 
+            player.observeProperty('audio-device-list', function(t){
+                if (t && t != null){
+                    console.log('audio-device-list: ' + JSON.stringify(t))
+                }
+            }); 
+            player.observeProperty('audio-device', function(t){
+                if (t && t != null){
+                    console.log('audio-device: ' + JSON.stringify(t))
+                }
+            }); 
             player.observeProperty('media-title', function(t){
                 isloaded = true;
                 if (t && t != null){
                     var curs = playlist.getCurrentSong();
                     console.log('Title changed: ' + t);
-                    io.sockets.emit('nowplaying', {title:t, albumart:curs.albumart});
+                    //console.log(JSON.stringify(curs));
+                    io.sockets.emit('nowplaying', {title:curs.tags.common.title, albumart:curs.albumart});
                 }
             });
             player.observeProperty('metadata', function(t){
-                //console.log('metadata: ' + JSON.stringify(t));
                 if (t && t !== null){
                     if (t.hasOwnProperty("icy-title")){
                         console.log('Title changed: ' + t["icy-title"]);
@@ -420,7 +434,7 @@ function timeout(ms) {
 } 
 
 async function playsong(songobj){
-    console.log("songobj - " + songobj);
+    //console.log("songobj - " + JSON.stringify(songobj));
     if (songobj && songobj !== null){
         //check if mpv is alive
         try {

@@ -177,8 +177,7 @@ h3, .h3 {
     border-radius: 3px;
     border: 0px;
     background-color: white;
-    width: 300px;
-    max-width: 65%;
+    width: 90%;
 }
 
 .settings-butt2 {
@@ -189,7 +188,7 @@ h3, .h3 {
     background-color: grey;
     color: white;
     cursor:pointer;
-    margin: 20px 0px;
+    margin-top:20px;
     text-align:center;
     position:relative;
 }
@@ -211,6 +210,12 @@ h3, .h3 {
     font-size: 0.8em;
     color:red;
     margin-bottom: 5px;
+}
+
+.settings-subtext{
+    margin-top: 0.8em;
+    font-size: 0.8em;
+    color:#666;
 }
 
 .settings-intro{
@@ -262,6 +267,7 @@ h3, .h3 {
 
 .browse-search-tit {
     padding: 20px;
+    display: inline-grid;
 }
 
 .browse-search-tit .tit{
@@ -424,11 +430,10 @@ h3, .h3 {
 }
 
 #devices .device .device-main {
-    flex:1;
+    flex:80%;
 }
 
 #devices .device .device-main input{
-    min-width: 300px;
     margin-top: 5px;
     background:#f7f7f7;
 }
@@ -631,12 +636,8 @@ h3, .h3 {
         display: none;
     }
     
-    .browse-top-back-icon.mobilehideme{
-        display: inline;
-    }
-    
     .browse-top-back-icon{
-        display: none;  
+        display: inline;  
     }
 
     #top-icon-menu {

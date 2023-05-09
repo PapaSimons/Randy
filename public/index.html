@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- Randy player - by Gideon Simons -->
 <html>
   <head>
     <meta charset="UTF-8">
@@ -14,6 +15,15 @@
       <!-- loading buttons -->
       <link rel="stylesheet" href="CSS/loading-btn.css">
       <link rel="stylesheet" href="CSS/loading.css">
+      <!-- Google tag - so we can see if people are using Randy -->
+      <script async src="https://www.googletagmanager.com/gtag/js?id=G-65SMHJ9XEM"></script>
+      <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'G-65SMHJ9XEM');
+      </script>
   </head>
   <body>
       <main>
@@ -59,6 +69,7 @@
                         <h3>Music Source</h3>
                         <div id="devices"></div>
                         <div id="sd_but" class="settings-butt2" onclick="poweroff()">Power off</div>
+                        <div class="settings-subtext">Saves SD cards</div>
                     </div>
                     <div id="browse-album">  
                       &nbsp;
