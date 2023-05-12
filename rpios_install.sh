@@ -63,6 +63,8 @@ defaults.pcm.card 1
 defaults.ctl.card 1
 EOF
 
+rm .asoundrc
+
 echo "-------------------------------------------"
 echo "######>>> setting hostname"
 echo "-------------------------------------------"
@@ -125,12 +127,6 @@ EOF
 systemctl daemon-reload
 systemctl start randy-node
 systemctl enable randy-node
-
-echo "-------------------------------------------"
-echo "######>>> set up spotify"
-echo "-------------------------------------------"
-
-curl -sL https://dtcooper.github.io/raspotify/install.sh | sh
 
 echo "-------------------------------------------"
 echo "######>>> remove un-needed packages"

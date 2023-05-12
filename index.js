@@ -334,11 +334,6 @@ function createNewPlayer(){
                     console.log('audio-out-params: ' + JSON.stringify(t))
                 }
             }); 
-            player.observeProperty('audio-device-list', function(t){
-                if (t && t != null){
-                    console.log('audio-device-list: ' + JSON.stringify(t))
-                }
-            }); 
             player.observeProperty('audio-device', function(t){
                 if (t && t != null){
                     console.log('audio-device: ' + JSON.stringify(t))
