@@ -125,7 +125,7 @@ app.post('/getSettings', async function (req, res) {
                     ind++;
                 });
             } else {
-                var device = {"name":drive.description, "size":drive.size, "path":mountpoints[0].path};
+                var device = {"name":drive.description, "size":drive.size, "path":drive.mountpoints[0].path};
                 devices.push(device);
             }   
         }

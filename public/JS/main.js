@@ -446,12 +446,12 @@ function browsepane(mode){
                 if (res.devices.length > 0){
                      for (i in res.devices){
                         templist.connectedDevices.push(res.devices[i].path);
-                        ht += "<div class='device'>" + res.devices[i].name + "<br/>" + formatBytes(res.devices[i].size,2);
+                        ht += "<div class='device'><div class='device-main'>" + res.devices[i].name + "<br/>" + formatBytes(res.devices[i].size,2) + "</div>";
                         if (res.devices[i].path == res.cursettings.musicfolders){
                            founddev = true;
-                           ht += "<div class='setit' onclick='changemfd("+i+");'><img src='/IMG/Check_16.svg')/></div>";
+                           ht += "<div class='setit' onclick='changemfd("+i+");'><img src='/IMG/Check_16.svg')/></div><div class='spinner'><img src='IMG/Spin.svg'/></div>";
                         } else {
-                           ht += "<div class='setit' onclick='changemfd("+i+");'>Set</div>";
+                           ht += "<div class='setit' onclick='changemfd("+i+");'>Set</div><div class='spinner'><img src='IMG/Spin.svg'/></div>";
                         }
                         ht += "</div>";
                      }
@@ -461,10 +461,10 @@ function browsepane(mode){
                  console.log('templist.connectedDevices - ' + templist.connectedDevices);
                  if (!founddev && res.cursettings.musicfolders !== null){
                     ht += " value='" + res.cursettings.musicfolders[0] + "'/></div>";
-                    ht += "<div class='setit' onclick='changemf();'><img src='/IMG/Check_16.svg')/></div>";
+                    ht += "<div class='setit' onclick='changemf();'><img src='/IMG/Check_16.svg')/></div><div class='spinner'><img src='IMG/Spin.svg'/></div>";
                  } else {
                     ht += "/></div>";
-                    ht += "<div class='setit' onclick='changemf();'>Set</div>";
+                    ht += "<div class='setit' onclick='changemf();'>Set</div><div class='spinner'><img src='IMG/Spin.svg'/></div>";
                  }
                  ht += "</div>";
                 $('#devices').html(ht); 
@@ -525,7 +525,9 @@ $("#seekdial").bind("mousedown touchstart" ,function() {
 function changemf(){
     var mf = $('#mf_inp').val();
     if (mf !== ''){
+        $('.device').addClass('loading');
         api.setMusicFolder([$('#mf_inp').val()]).then(function(ret){
+            $('.device').removeClass('loading');
             browsepane('settings');
             if (ret.success !== 200){
                 showToast('Something went wrong');
@@ -539,7 +541,9 @@ function changemf(){
 }
 
 function changemfd(i){
+    $('.device').addClass('loading');
     api.setMusicFolder([templist.connectedDevices[i]]).then(function(ret){
+        $('.device').removeClass('loading');
         browsepane('settings');
         if (ret.success !== 200){
             showToast('Something went wrong');

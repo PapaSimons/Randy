@@ -790,6 +790,23 @@ h3, .h3 {
     display: block;
   }
    
+  .device .spinner {
+    -webkit-animation: spinner 1s infinite linear;
+            animation: spinner 1s infinite linear;
+    display: none;
+    padding: 0 10px;
+    padding-top: 2px;
+    text-align: right;
+    float: right;
+  }
+
+  .device.loading .setit {
+    display: none;
+  }
+  .device.loading .spinner {
+    display: block;
+  }
+
   @-webkit-keyframes spinner {
     0% {
       -webkit-transform: rotate(0deg);
