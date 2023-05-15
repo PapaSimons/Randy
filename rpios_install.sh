@@ -107,13 +107,15 @@ echo "-------------------------------------------"
 echo "######>>> setting up systemd node deamon"
 echo "-------------------------------------------"
 
+USER_HOME=$(getent passwd $SUDO_USER | cut -d: -f6)
+
 cat <<EOF > /etc/systemd/system/randy-node.service
 [Unit]
 Description=Randy nodejs application daemon
 After=network.target
 
 [Service]
-ExecStart=/usr/bin/node /home/pi/Randy/index.js
+ExecStart=/usr/bin/node $USER_HOME/Randy/index.js
 Restart=on-failure
 Type=simple
 StandardOutput=syslog
