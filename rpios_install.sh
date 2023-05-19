@@ -27,6 +27,8 @@ echo "-------------------------------------------"
 echo "######>>> installing packages"
 echo "-------------------------------------------"
 
+apt-get install -y wget curl tar alsa-utils make build-essential
+
 apt-get install -y mpv exfat-fuse exfat-utils ntfs-3g
 
 echo "-------------------------------------------"
@@ -107,7 +109,7 @@ echo "-------------------------------------------"
 echo "######>>> setting up systemd node deamon"
 echo "-------------------------------------------"
 
-USER_HOME=$(getent passwd $SUDO_USER | cut -d: -f6)
+USER_HOME=$(getent passwd "$(logname)" | cut -d: -f6)
 
 cat <<EOF > /etc/systemd/system/randy-node.service
 [Unit]
