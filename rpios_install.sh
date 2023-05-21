@@ -17,19 +17,26 @@ apt-get update -y
 apt-get upgrade -y
 
 echo "-------------------------------------------"
+echo "######>>> installing base packages"
+echo "-------------------------------------------"
+
+INSTALL_PKGS="wget curl tar alsa alsa-utils make build-essential exfat-fuse exfat-utils ntfs-3g"
+for i in $INSTALL_PKGS; do
+  sudo apt-get install -y $i
+done
+
+echo "-------------------------------------------"
+echo "######>>> installing mpv"
+echo "-------------------------------------------"
+
+apt-get install -y mpv
+
+echo "-------------------------------------------"
 echo "######>>> getting latest yt-dlp"
 echo "-------------------------------------------"
 
 sudo wget https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -O /usr/local/bin/yt-dlp
 sudo chmod a+rx /usr/local/bin/yt-dlp
-
-echo "-------------------------------------------"
-echo "######>>> installing packages"
-echo "-------------------------------------------"
-
-apt-get install -y wget curl tar alsa-utils make build-essential
-
-apt-get install -y mpv exfat-fuse exfat-utils ntfs-3g
 
 echo "-------------------------------------------"
 echo "######>>> installing nodejs"
