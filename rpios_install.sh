@@ -27,7 +27,7 @@ echo "-------------------------------------------"
 echo "######>>> installing packages"
 echo "-------------------------------------------"
 
-apt-get install -y wget curl tar alsa-utils build-essential
+apt-get install -y wget curl tar alsa-utils make build-essential
 
 apt-get install -y mpv exfat-fuse exfat-utils ntfs-3g
 
