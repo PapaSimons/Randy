@@ -41,7 +41,7 @@ Install [Raspberry Pi OS lite](https://github.com/PapaSimons/Randy/wiki#raspberr
 **Note** After the installation the hostname will be 'randy' and unless you change username and password they will stay as 'pi' and 'raspberry'.
 
 ```sh
-curl -L https://raw.githubusercontent.com/PapaSimons/Randy/master/rpios_install.sh -o install.sh
+curl -L https://raw.githubusercontent.com/PapaSimons/Randy/master/install.sh -o install.sh
 
 sudo chmod +x ./install.sh
 
