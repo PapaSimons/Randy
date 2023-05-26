@@ -171,8 +171,8 @@ io.on('connection', function(socket){
     
     console.log('a user connected');
     
-    //check initial settings
-    if (!checkmf()){
+    //check if there is a playlist or music folder
+    if (!checkmf() && (!playlist.getPlayList().length > 0)){
         io.sockets.emit('nomusicfolder', null);
     }
     
@@ -259,13 +259,22 @@ function initRandy(){
     //check music folder
     if (!checkmf()){
         console.log("No music folder found");
-        io.sockets.emit('nomusicfolder', null);
+        playlist.initPlaylist(emitplaylist, emitsticky, emitproblem).then(function(fsong){
+            console.log("initated dbs and objects");
+            //check if there is a non musicfolder playlist
+            console.log('playlist.getPlayList() - ' + playlist.getPlayList());
+            if (playlist.getPlayList() == null){
+                io.sockets.emit('nomusicfolder', null);
+            }
+        }).catch(function(err){
+           console.log("error while initing playlist - " + err); 
+        });
     } else {
         //for serving cover art files (potentially streaming in future)
         initmf();
         //load playlist
         playlist.getAllSongs().then(function(){
-            playlist.initPlaylist(3,emitplaylist,emitsticky).then(function(fsong){
+            playlist.initPlaylist(emitplaylist, emitsticky, emitproblem).then(function(fsong){
                 if (player != null){
                     playsong(fsong); 
                 }
@@ -301,6 +310,10 @@ function emitplaylist(){
 
 function emitsticky(){
     io.sockets.emit('newstickies', {});
+}
+
+function emitproblem(){
+    io.sockets.emit('problem', {});
 }
 
 function createNewPlayer(){
@@ -429,7 +442,6 @@ function timeout(ms) {
 } 
 
 async function playsong(songobj){
-    //console.log("songobj - " + JSON.stringify(songobj));
     if (songobj && songobj !== null){
         //check if mpv is alive
         try {

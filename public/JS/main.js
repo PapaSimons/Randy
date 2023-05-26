@@ -215,6 +215,10 @@ socket.on('newstickies', function(obj){
     populateStickies($('.browse-init-sticky'), 5);
 });
 
+socket.on('problem', function(obj){
+    showToast('Problem playing songs! Check your music source or sound output', 10000);
+});
+
 function rotateit(curpos){
     setTimeout(function(){ 
         var diff = Math.abs(curpos - lastpos);
@@ -557,11 +561,14 @@ function poweroff(){
     api.powerOff();
 }
 
-function showToast(txt){
+function showToast(txt,howlong){
+    if (!howlong){
+        howlong = 2000;
+    }
     $("#snackbar").html(txt);
     var x = document.getElementById("snackbar");
     x.className = "show";
-    setTimeout(function(){ x.className = x.className.replace("show", ""); }, 2000);
+    setTimeout(function(){ x.className = x.className.replace("show", ""); }, howlong);
 }
 
 //album view//
