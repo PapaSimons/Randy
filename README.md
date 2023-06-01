@@ -37,7 +37,7 @@ This is a fun project with lots of possible enhancements :)
 
 Install [Ubuntu Server 32bit](https://ubuntu.com/download/server) or [Raspberry Pi OS lite](https://github.com/PapaSimons/Randy/wiki#raspberry-pi-os-lite-installation) on your device.
 
-[ssh](https://github.com/PapaSimons/Randy/wiki#ssh-into-the-device) into the new Pi and type in the following commands to download and run the install script.
+SSH into the new OS installation and type in the following commands to download and run the install script.
 
 ```sh
 curl -L https://raw.githubusercontent.com/PapaSimons/Randy/master/install.sh -o install.sh
