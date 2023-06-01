@@ -35,7 +35,7 @@ This is a fun project with lots of possible enhancements :)
 
 **On Raspberry PI**
 
-Install [Raspberry Pi OS lite](https://github.com/PapaSimons/Randy/wiki#raspberry-pi-os-lite-installation) on a SD card and boot it up on your raspberry pi device.
+Install [Raspberry Pi OS lite](https://github.com/PapaSimons/Randy/wiki#raspberry-pi-os-lite-installation), or Ubuntu Server 32bit on a SD card and boot it up on your raspberry pi device.
 [ssh](https://github.com/PapaSimons/Randy/wiki#ssh-into-the-device) into the new Pi and type in the following commands to download and run the install script.
 
 **Note** After the installation the hostname will be 'randy' and unless you change username and password they will stay as 'pi' and 'raspberry'.
@@ -55,11 +55,42 @@ If everything goes well, you can go to a computer or mobile browser on a device 
 
 **On Other Linux devices**
 
-Coming soon!
+To be safe install Ubuntu Server on your device
+
+**Note** After the installation the hostname will be 'randy' and unless you change username and password they will stay as 'pi' and 'raspberry'.
+
+```sh
+curl -L https://raw.githubusercontent.com/PapaSimons/Randy/master/install.sh -o install.sh
+
+sudo chmod +x ./install.sh
+
+sudo ./install.sh
+```
 
 **On Macos**
 
 Coming soon!
+
+### Updating Randy
+
+Randy has an experimental update script which you can run if you already have Randy installed and want to get the latest changes. 
+The update script loads the new project files and maintains the playlist and stickies you already have.
+
+For the newer versions you can just run:
+
+```
+sudo ./update.sh
+```
+
+For older versions (pre- v1.0.12) run:
+
+```sh
+curl -L https://raw.githubusercontent.com/PapaSimons/Randy/master/update.sh -o update.sh
+
+sudo chmod +x ./update.sh
+
+sudo ./update.sh
+```
 
 ### Support the project
 
