@@ -47,11 +47,15 @@ sudo chmod +x ./install.sh
 sudo ./install.sh
 ```
 
+- in Ubuntu server you can ignore the many blue services prompt and press enter -
+
 At the end of the installation you will have to reboot.
 
 If everything goes well, you can go to a computer or mobile browser on a device thats connected to the same wifi as Randy and type: [http://randy/](http://randy/) into the search bar and it will load Randy.
 
 **Note on host name** - After the installation the hostname will be 'randy'.
+
+**Note on OSes and Devices** - Randy has worked on RPI, Orange pi Zero, Intel NUC, HP T-520 Thin client and maybe others as well.
 
 **Note on DACs** - Randy installation is currently set to a USB DAC, if you have an i2s HAT DAC or something else you can follow the manufacturer instructions to set it up on raspberry pi OS, or the one in the [wiki page](https://github.com/PapaSimons/Randy/wiki#i2s-dacs), and [here is a great tutorial for alloboss](https://howtohifi.com/how-to-set-up-allo-boss-dac-hat-headless-raspberry-pi/)
 
