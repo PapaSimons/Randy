@@ -609,7 +609,7 @@ function showToast(txt,isconsistant){
     var x = document.getElementById("snackbar");
     if (!isconsistant){
         x.className = "show";
-        toasttimeout = setTimeout(function(){ x.className = ""; }, howlong);
+        toasttimeout = setTimeout(function(){ x.className = ""; }, 3000);
     } else {
         x.className = "showconsistant";
     }
