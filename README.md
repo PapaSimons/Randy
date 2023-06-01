@@ -21,7 +21,7 @@ Sound quality is most important, I build my own amplifiers and speakers with the
 
 ### Raspberry pi and desktop apps
 
-I am currently building Randy with RPI in mind and maybe as an desktop app later for linux and macos if there is demand.
+I am currently building Randy with RPI, SBC and thin clients in mind and maybe as an desktop app later for linux and macos if there is demand.
 
 This will probably be the first non-MPD RPI streamer and very minimalistic at this stage.
 Instead of [MPD](https://www.musicpd.org/) I am using [MPV](https://mpv.io/) which is a beast of a video player, but has all the good stuff to put out amazing sound quality as well. On top of that, it has a very efficient IPC connection and a direct pipe to yt-dlp which makes it easy to play just about anything off the web or your filesystems.
@@ -33,12 +33,11 @@ This is a fun project with lots of possible enhancements :)
 
 ### Installing Randy
 
-**On Raspberry PI**
+**On Raspberry PI or Other Linux devices**
 
-Install [Raspberry Pi OS lite](https://github.com/PapaSimons/Randy/wiki#raspberry-pi-os-lite-installation), or Ubuntu Server 32bit on a SD card and boot it up on your raspberry pi device.
+Install [Ubuntu Server 32bit](https://ubuntu.com/download/server) or [Raspberry Pi OS lite](https://github.com/PapaSimons/Randy/wiki#raspberry-pi-os-lite-installation) on your device.
+
 [ssh](https://github.com/PapaSimons/Randy/wiki#ssh-into-the-device) into the new Pi and type in the following commands to download and run the install script.
-
-**Note** After the installation the hostname will be 'randy' and unless you change username and password they will stay as 'pi' and 'raspberry'.
 
 ```sh
 curl -L https://raw.githubusercontent.com/PapaSimons/Randy/master/install.sh -o install.sh
@@ -49,23 +48,12 @@ sudo ./install.sh
 ```
 
 At the end of the installation you will have to reboot.
+
 If everything goes well, you can go to a computer or mobile browser on a device thats connected to the same wifi as Randy and type: [http://randy/](http://randy/) into the search bar and it will load Randy.
 
+**Note on host name** - After the installation the hostname will be 'randy'.
+
 **Note on DACs** - Randy installation is currently set to a USB DAC, if you have an i2s HAT DAC or something else you can follow the manufacturer instructions to set it up on raspberry pi OS, or the one in the [wiki page](https://github.com/PapaSimons/Randy/wiki#i2s-dacs), and [here is a great tutorial for alloboss](https://howtohifi.com/how-to-set-up-allo-boss-dac-hat-headless-raspberry-pi/)
-
-**On Other Linux devices**
-
-To be safe install Ubuntu Server on your device
-
-**Note** After the installation the hostname will be 'randy' and unless you change username and password they will stay as 'pi' and 'raspberry'.
-
-```sh
-curl -L https://raw.githubusercontent.com/PapaSimons/Randy/master/install.sh -o install.sh
-
-sudo chmod +x ./install.sh
-
-sudo ./install.sh
-```
 
 **On Macos**
 
