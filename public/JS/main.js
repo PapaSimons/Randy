@@ -15,6 +15,7 @@ var musicfolderatinit = true;
 var rot = 0;
 var lastpos = -1;
 var lastposupdate = -1;
+var toasttimeout;
 
 window.onload = function() {
     if (musicfolderatinit){
@@ -200,6 +201,16 @@ function playsong(id){
 
 var socket = io();
 
+socket.on("disconnect", (reason) => {
+    console.log("disconnected");
+    showToast("randy server may be down",true);
+});
+
+socket.on("connect", (reason) => {
+    console.log("connected");
+    hideToast();
+});
+
 socket.on('nomusicfolder', function(obj){
     console.log("no music folder");
     musicfolderatinit = false;
@@ -215,8 +226,12 @@ socket.on('newstickies', function(obj){
     populateStickies($('.browse-init-sticky'), 5);
 });
 
+socket.on('audiostats', function(obj){
+    cursong.find('.onesong-info').html(obj);
+});
+
 socket.on('problem', function(obj){
-    showToast('Problem playing songs! Check your music source or sound output', 10000);
+    showToast('Problem playing songs! Check your music source or sound output');
 });
 
 function rotateit(curpos){
@@ -311,9 +326,11 @@ socket.on('playlist', function(objj){
        ns += "<div class='onesong-details'>";
        ns += "<div class='onesong-tit' title='" + tit + "'>" + tit + "</div>";
        ns += "<div class='onesong-artist' title='" + artistalbum + "'>" + artistalbum + "</div>";
+       if (objj.playing == i){
+        ns += "<div class='onesong-info'>  -  </div>";
+       }
        ns += "</div>";
        ns += "<div class='onesong-len' len='" + len + "'>" + secondsToHms(len) + "</div>";
-       //ns += "<div class='onesong-sticky' class='clickable' onclick='doSongOption(\"stick\",\"playlist\",\""+i+"\")'><img src='IMG/Bookmark_onesong.svg'/></div>";
        ns += "</div>";
        plist.append(ns);
    } 
@@ -472,6 +489,20 @@ function browsepane(mode){
                  }
                  ht += "</div>";
                 $('#devices').html(ht); 
+                var playonstart = res.cursettings.playonstart;
+                if (playonstart == "true" || playonstart == null){
+                    $('#playonstart').prop("checked", true);
+                } else {
+                    $('#playonstart').prop("checked", false);
+                }
+                $('#playonstartform :checkbox').change(function () {
+                    console.log("playonstartform changed");
+                    if ($(this).is(':checked')) {
+                        setSetting("playonstart",true, "setting saved");
+                    } else {
+                        setSetting("playonstart",false, "setting saved");
+                    }
+                });
             });
             console.log('in settings');
         break;
@@ -557,18 +588,37 @@ function changemfd(i){
     });
 }
 
+function setSetting(obj,key,msg){
+    api.setSetting(obj,key).then(function(ret){
+        if (ret.success !== 200){
+            showToast('Something went wrong');
+        } else {
+            showToast(msg);
+        }
+    });
+}
+
 function poweroff(){
     api.powerOff();
 }
 
-function showToast(txt,howlong){
-    if (!howlong){
-        howlong = 2000;
-    }
+function showToast(txt,isconsistant){
+    console.log("showtoast " + txt);
+    clearTimeout(toasttimeout);
     $("#snackbar").html(txt);
     var x = document.getElementById("snackbar");
-    x.className = "show";
-    setTimeout(function(){ x.className = x.className.replace("show", ""); }, howlong);
+    if (!isconsistant){
+        x.className = "show";
+        toasttimeout = setTimeout(function(){ x.className = ""; }, howlong);
+    } else {
+        x.className = "showconsistant";
+    }
+}
+
+function hideToast(){
+    clearTimeout(toasttimeout);
+    var x = document.getElementById("snackbar");
+    x.className = "";
 }
 
 //album view//

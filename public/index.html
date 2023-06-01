@@ -52,7 +52,17 @@
                           &nbsp;
                         </div>
                         <div class="browse-init-randomalbums">
-                          &nbsp;
+                          <h3>Random Albums</h3>
+                          <div class='random-albums'>
+                            <img src="IMG/placeholder_img.png"/>
+                            <img src="IMG/placeholder_img.png"/>
+                            <img src="IMG/placeholder_img.png"/>
+                            <img src="IMG/placeholder_img.png"/>
+                            <img src="IMG/placeholder_img.png"/>
+                            <img src="IMG/placeholder_img.png"/>
+                            <img src="IMG/placeholder_img.png"/>
+                            <img src="IMG/placeholder_img.png"/>
+                          </div>
                         </div>
                     </div>
                     <div id="browse-files">
@@ -68,7 +78,15 @@
                         </div>
                         <h3>Music Source</h3>
                         <div id="devices"></div>
+                        <h3>Other Settings</h3>
+                        <div>
+                          <form id="playonstartform">
+                            <input type="checkbox" id="playonstart" name="playonstart" value="true" checked />
+                            <label for="playonstart">Play music on restart</label>
+                          </form>
+                        </div>
                         <div id="sd_but" class="settings-butt2" onclick="poweroff()">Power off</div>
+                        <div class="randyversion">v1.0.14</div>
                     </div>
                     <div id="browse-album">  
                       &nbsp;
@@ -119,7 +137,7 @@
             </div>
         </div>
       </main> 
-      <div id="snackbar"></div> 
+      <div id="snackbar" class=""></div> 
       <script src="JS/api.js"></script>
       <script src='JS/jquery.knob.min.js'></script>
       <script src='JS/anime.min.js'></script>

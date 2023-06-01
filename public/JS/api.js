@@ -34,6 +34,9 @@ var api = {
     getSettings: function (mf){
         return callAPI("getSettings",{});
     },
+    setSetting: function (obj,key){
+        return callAPI("setSetting",{obj:obj,key:key});
+    },
     powerOff: function (){
         return callAPI("powerOff",{});
     }

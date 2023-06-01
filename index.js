@@ -133,6 +133,15 @@ app.post('/getSettings', async function (req, res) {
     res.json({"cursettings":cursettings, "devices":devices});
 });
 
+app.post('/setSetting', async function (req, res) {
+    res.header("Access-Control-Allow-Origin", "http://localhost");
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+    //return
+    console.log("setting a new setting + " + req.body.obj + " = " + req.body.key);
+    playlist.setSetting(req.body.obj, req.body.key);
+    res.json({"success":200});
+});
+
 app.post('/getURLMeta', function (req, res) {
     res.header("Access-Control-Allow-Origin", "http://localhost");
     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
@@ -327,7 +336,12 @@ function createNewPlayer(){
             player = newplayer;
             //load the current song
             if (playlist.getPlayList().length > 0){
-                playsong(playlist.getCurrentSong());
+                var playonstart = playlist.getSettings().playonstart;
+                console.log("playonstart - " + playonstart);
+                if (playonstart == "true" || playonstart == null){
+                    console.log("Playing on start");
+                    playsong(playlist.getCurrentSong());
+                }
             }
             //listen to events
             player.observeProperty('audio-pts', function(t){
@@ -342,14 +356,23 @@ function createNewPlayer(){
                     io.sockets.emit('duration', t);
                 }
             });
-            player.observeProperty('audio-out-params', function(t){
+            player.observeProperty('audio-bitrate', function(t){
                 if (t && t != null){
-                    console.log('audio-out-params: ' + JSON.stringify(t))
-                }
-            }); 
-            player.observeProperty('audio-device', function(t){
-                if (t && t != null){
-                    console.log('audio-device: ' + JSON.stringify(t))
+                    player.getProperty('audio-out-params').then(ap => {
+                        if (ap && ap != null){
+                            player.getProperty('file-format').then(ff => {
+                                if (ff && ff != null){
+                                    var friendlystats = ff.toUpperCase().split(',')[0] + ',  ' + (ap.samplerate/1000).toFixed(1) + 'khz,  ' + ap["channel-count"] + 'ch,  ' + Math.round(t/1000) + 'kbs';
+                                    //console.log('---> friendly output: ' + friendlystats);
+                                    io.sockets.emit('audiostats', friendlystats);
+                                }
+                            }).catch(function(err){
+                                console.log("error getting invoked file-format - " + err); 
+                            });
+                        }
+                    }).catch(function(err){
+                        console.log("error getting invoked audio-params - " + err); 
+                    });
                 }
             }); 
             player.observeProperty('media-title', function(t){
@@ -357,7 +380,6 @@ function createNewPlayer(){
                 if (t && t != null){
                     var curs = playlist.getCurrentSong();
                     console.log('Title changed: ' + t);
-                    //console.log(JSON.stringify(curs));
                     io.sockets.emit('nowplaying', {title:curs.tags.common.title, albumart:curs.albumart});
                 }
             });
