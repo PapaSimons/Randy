@@ -18,6 +18,7 @@ var metaget = require("metaget");
 var cp = require('child_process');
 var fs = require("fs");
 var drivelist = require('drivelist');
+const os = require('node:os'); 
 
 //vars
 var player = null;
@@ -259,6 +260,7 @@ http.listen(port, function(){
   });
   
 console.log("Welcome to Randy - localhost:" + port + " - !");
+console.log("Raunning on - " + os.platform());
   
 ////--- init the player ---////
 
@@ -327,8 +329,19 @@ function emitproblem(){
 
 function createNewPlayer(){
     //create player instance
-    createPlayer({ args: ['--no-config', '--af-clr','--vf-clr','--vid=no','--no-video', 'script-opts=ytdl_hook-ytdl_path=yt-dlp',
-                          '--audio-display=no','--no-initial-audio-sync','--ytdl-format=bestaudio'] }, (err, newplayer) => {
+    var mpvargs = ['--no-config', 
+                    '--af-clr',
+                    '--vf-clr',
+                    '--vid=no',
+                    '--no-video', 
+                    'script-opts=ytdl_hook-ytdl_path=yt-dlp',
+                    '--audio-display=no',
+                    '--no-initial-audio-sync',
+                    '--ytdl-format=bestaudio']; 
+    if (os.platform() == 'linux'){
+        mpvargs.push('--alsa-resample=yes');
+    }
+    createPlayer({ args:mpvargs }, (err, newplayer) => {
         if (err) {
             console.error("Error creating player - " + err);
         } else {
