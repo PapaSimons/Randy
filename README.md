@@ -68,14 +68,6 @@ Coming soon!
 Randy has an experimental update script which you can run if you already have Randy installed and want to get the latest changes. 
 The update script loads the new project files and maintains the playlist and stickies you already have.
 
-For the newer versions you can just run:
-
-```
-sudo ./update.sh
-```
-
-For older versions (pre- v1.0.12) run:
-
 ```sh
 curl -L https://raw.githubusercontent.com/PapaSimons/Randy/master/update.sh -o update.sh
 
