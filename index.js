@@ -340,6 +340,7 @@ function createNewPlayer(){
                     '--ytdl-format=bestaudio']; 
     if (os.platform() == 'linux'){
         mpvargs.push('--alsa-resample=yes');
+        mpvargs.push('--ao=alsa');
     }
     createPlayer({ args:mpvargs }, (err, newplayer) => {
         if (err) {
