@@ -58,7 +58,7 @@ echo "######>>> installing nodejs"
 echo "-------------------------------------------"
 
 sudo curl -sL https://deb.nodesource.com/setup_current.x | sudo bash -
-apt-get install -y nodejs
+apt-get install -y nodejs npm
 
 echo "-------------------------------------------"
 echo "######>>> Download the latest release of Randy"
