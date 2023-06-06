@@ -3,11 +3,14 @@
 echo "-------------------------------------------"
 echo "######>>> Starting RPIOS"
 echo "-------------------------------------------"
-echo "-------------------------------------------"
-echo "######>>> Expanding file system"
-echo "-------------------------------------------"
+
+echo "######>>> Expanding file system (RPI OS)"
 
 raspi-config --expand-rootfs
+
+echo "######>>> prevent Ubuntu server popups"
+
+apt-get remove -y needrestart
 
 echo "-------------------------------------------"
 echo "######>>> updating and upgrading packages"
@@ -29,7 +32,19 @@ echo "-------------------------------------------"
 echo "######>>> installing mpv"
 echo "-------------------------------------------"
 
-apt-get install -y mpv
+curl https://non-gnu.uvt.nl/debian/uvt_key.gpg --output uvt_key.gpg
+mv uvt_key.gpg /etc/apt/trusted.gpg.d
+apt-get install -y apt-transport-https
+sh -c 'echo "deb https://non-gnu.uvt.nl/debian $(lsb_release -sc) uvt" >> /etc/apt/sources.list.d/non-gnu-uvt.list'
+apt-get -y update
+apt-get install -y -t "o=UvT" mpv
+
+if ! command -v mpv >/dev/null 2>&1; then
+    echo "mpv latest was not installed. Installing mpv from apt-get"
+    sudo apt-get install -y mpv
+else
+    echo "mpv latest installed."
+fi
 
 echo "-------------------------------------------"
 echo "######>>> getting latest yt-dlp"
@@ -70,6 +85,10 @@ echo "-------------------------------------------"
 cat <<EOF > /etc/asound.conf
 defaults.pcm.card 1
 defaults.ctl.card 1
+pcm.!default {
+ type plug
+ slave.pcm hw
+}
 EOF
 
 rm .asoundrc
