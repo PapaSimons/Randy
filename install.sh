@@ -23,10 +23,17 @@ echo "-------------------------------------------"
 echo "######>>> installing base packages"
 echo "-------------------------------------------"
 
-INSTALL_PKGS="wget curl tar alsa alsa-utils make build-essential exfat-fuse exfat-utils ntfs-3g nodejs npm"
+INSTALL_PKGS="wget curl tar alsa alsa-utils make build-essential exfat-fuse exfat-utils ntfs-3g"
 for i in $INSTALL_PKGS; do
   apt-get install -y $i
 done
+
+echo "-------------------------------------------"
+echo "######>>> installing nodejs lts"
+echo "-------------------------------------------"
+
+curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - &&\
+apt-get install -y nodejs
 
 echo "-------------------------------------------"
 echo "######>>> installing mpv"
