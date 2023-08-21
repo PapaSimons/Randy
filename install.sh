@@ -23,9 +23,9 @@ echo "-------------------------------------------"
 echo "######>>> installing base packages"
 echo "-------------------------------------------"
 
-INSTALL_PKGS="wget curl tar alsa alsa-utils make build-essential exfat-fuse exfat-utils ntfs-3g"
+INSTALL_PKGS="wget curl tar alsa alsa-utils make build-essential exfat-fuse exfat-utils ntfs-3g nodejs npm"
 for i in $INSTALL_PKGS; do
-  sudo apt-get install -y $i
+  apt-get install -y $i
 done
 
 echo "-------------------------------------------"
@@ -38,10 +38,11 @@ apt-get install -y apt-transport-https
 sh -c 'echo "deb https://non-gnu.uvt.nl/debian $(lsb_release -sc) uvt" >> /etc/apt/sources.list.d/non-gnu-uvt.list'
 apt-get -y update
 apt-get install -y -t "o=UvT" mpv
+rm /etc/apt/sources.list.d/non-gnu-uvt.list
 
 if ! command -v mpv >/dev/null 2>&1; then
     echo "mpv latest was not installed. Installing mpv from apt-get"
-    sudo apt-get install -y mpv
+    apt-get install -y mpv
 else
     echo "mpv latest installed."
 fi
@@ -50,15 +51,8 @@ echo "-------------------------------------------"
 echo "######>>> getting latest yt-dlp"
 echo "-------------------------------------------"
 
-sudo wget https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -O /usr/local/bin/yt-dlp
-sudo chmod a+rx /usr/local/bin/yt-dlp
-
-echo "-------------------------------------------"
-echo "######>>> installing nodejs"
-echo "-------------------------------------------"
-
-sudo curl -sL https://deb.nodesource.com/setup_current.x | sudo bash -
-apt-get install -y nodejs
+wget https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -O /usr/local/bin/yt-dlp
+chmod a+rx /usr/local/bin/yt-dlp
 
 echo "-------------------------------------------"
 echo "######>>> Download the latest release of Randy"

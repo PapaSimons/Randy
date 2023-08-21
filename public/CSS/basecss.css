@@ -434,7 +434,16 @@ h3, .h3 {
 }
 
 #devices .device .device-main {
-    flex:80%;
+    flex:60%;
+}
+
+#devices .device .device-select {
+  flex:30%;
+}
+
+#devices .device .device-select select {
+  width:100%;
+  border-color: #aaa;
 }
 
 #devices .device .device-main input{
@@ -447,6 +456,11 @@ h3, .h3 {
     text-align: right;
     padding-right: 10px;
     cursor: pointer;
+}
+
+#toggleshowalldevices {
+  color: blue;
+  cursor: pointer;
 }
 
 .onesong-details {
@@ -819,7 +833,20 @@ h3, .h3 {
   #search.loading .spinner {
     display: block;
   }
-   
+
+  #loadingdevices .spinner {
+    -webkit-animation: spinner 1s infinite linear;
+            animation: spinner 1s infinite linear;
+    display: none;
+    padding: 0 10px;
+    padding-top: 2px;
+    text-align: left;
+  }
+
+  #loadingdevices.loading .spinner {
+    display: inline-block;
+  }
+
   .device .spinner {
     -webkit-animation: spinner 1s infinite linear;
             animation: spinner 1s infinite linear;

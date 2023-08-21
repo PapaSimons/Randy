@@ -27,6 +27,7 @@ var port = process.env.PORT || process.argv[2] || 80;
 var isloaded = false;
 var sockettimeout = null;
 var seekable = true;
+var audiodevicelist = {};
 
 //express parsing support
 app.use(bodyParser.json()); // to support JSON-encoded bodies
@@ -118,20 +119,33 @@ app.post('/getSettings', async function (req, res) {
     var devices = [];
     drives.forEach((drive) => {
         if (drive.mountpoints.length > 0 && drive.isUSB){
-            if (drive.mountpoints.length > 1){
-                var ind = 1;
-                drive.mountpoints.forEach((mountpoint) => {
-                    var device = {"name":drive.description + ' | partition ' + ind, "size":drive.size, "path":mountpoint.path};
-                    devices.push(device);
-                    ind++;
-                });
-            } else {
-                var device = {"name":drive.description, "size":drive.size, "path":drive.mountpoints[0].path};
+            console.log(drive);
+            drive.mountpoints.forEach((mountpoint) => {
+                var device = {
+                    "name":mountpoint.label + " - " + drive.description, 
+                    "size":drive.size, 
+                    "path":mountpoint.path
+                };
                 devices.push(device);
-            }   
+            });
         }
     });
-    res.json({"cursettings":cursettings, "devices":devices});
+    console.log(devices);
+    console.log(audiodevicelist);
+    var audiodevices = [];
+    audiodevicelist.forEach((device) => {
+        //add back hw which was removed by mpv
+        if (device.name.includes('plughw')){
+            var hwname = device.name.replace("plughw","hw");
+            var desc = device.description.split('/').splice(0,1).join("/");
+            var deviceobj = {"name":hwname, "description":desc + "/ Direct to hardware without conversions", "status":"online"};
+            audiodevices.push(deviceobj);
+        }
+        var deviceobj = {"name":device.name, "description":device.description, "status":"online"};
+        audiodevices.push(deviceobj);
+    });
+    console.log(audiodevices);
+    res.json({"cursettings":cursettings, "devices":devices, "audiodevices":audiodevices});
 });
 
 app.post('/setSetting', async function (req, res) {
@@ -140,6 +154,9 @@ app.post('/setSetting', async function (req, res) {
     //return
     console.log("setting a new setting + " + req.body.obj + " = " + req.body.key);
     playlist.setSetting(req.body.obj, req.body.key);
+    if (req.body.obj == "audioOutputDevice"){
+        restartplayer();
+    }
     res.json({"success":200});
 });
 
@@ -337,6 +354,8 @@ function createNewPlayer(){
                     'script-opts=ytdl_hook-ytdl_path=yt-dlp',
                     '--audio-display=no',
                     '--no-initial-audio-sync',
+                    '--audio-fallback-to-null=yes',
+                    '--audio-device=' + playlist.getSettings().audioOutputDevice,
                     '--ytdl-format=bestaudio']; 
     if (os.platform() == 'linux'){
         mpvargs.push('--alsa-resample=yes');
@@ -418,8 +437,12 @@ function createNewPlayer(){
                     }
                 }
             });
-            //player.observeProperty('AV', t => console.log('Audio specs: ' + t));
-            //player.observeProperty('A', t => console.log('Player info: ' + t));
+            player.observeProperty('audio-device-list', function(t){
+                console.log('audio-device-list: ' + JSON.stringify(t));
+                audiodevicelist = t;
+            });
+            
+            player.observeProperty('ao', t => console.log('----- ao --- : ' + t));
             
             //when mpv is idle
             //testing alternative to end of file with idle

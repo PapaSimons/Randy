@@ -16,6 +16,7 @@ var rot = 0;
 var lastpos = -1;
 var lastposupdate = -1;
 var toasttimeout;
+var showfullaudiodevicelist = false;
 
 window.onload = function() {
     if (musicfolderatinit){
@@ -459,10 +460,14 @@ function browsepane(mode){
             });
         break;
         case "settings":
+            $('#devices').html('');
+            $('#loadingdevices').addClass('loading');
             api.getSettings().then(function(rtn){
+                $('#loadingdevices').removeClass('loading');
                 var res = rtn;     
                 var ht = "";
                 templist.connectedDevices = [];
+                templist.audiodDevices = [];
                 var founddev = false;
                 if (res.devices.length > 0){
                      for (i in res.devices){
@@ -488,6 +493,80 @@ function browsepane(mode){
                     ht += "<div class='setit' onclick='changemf();'>Set</div><div class='spinner'><img src='IMG/Spin.svg'/></div>";
                  }
                  ht += "</div>";
+                 //audio devices
+                 console.log(res.audiodevices.length);
+                 if (res.audiodevices.length > 0){
+                    ht += "<h3>AUDIO DEVICES</h3>";
+                    //if not advanced view remove some things
+                    var audiodevices = res.audiodevices;
+                    var selectedaudiodevices = [];
+                    res.audiodevices.forEach((device) => {
+                        if (device.name.includes(':')){
+                            if (device.name.includes('hw') || device.name.includes('plughw')){
+                                selectedaudiodevices.push(device);
+                            }
+                        } else {
+                            if ((device.name.includes('/') && !device.name.includes('default')) || device.name == "auto"){
+                                selectedaudiodevices.push(device);
+                            }
+                        }
+                    });
+                    if (!showfullaudiodevicelist){
+                        audiodevices = selectedaudiodevices;
+                    }
+                    var cards = [];
+                    var cardsobj = [];
+                    //populate into cards
+                    audiodevices.forEach((device) => {
+                        if (device.name.includes(':')){
+                            var card = device.description.split('/').splice(0,1).join("/"); //CARD=vc4hdmi, DEV=2
+                            if (!cards.includes(card)){
+                                cards.push(card);
+                                cardsobj.push({"card":card, "name":card, "plugins":[device]});
+                            } else {
+                                var cardobj = cardsobj.find(e => e.card == card);
+                                cardobj.plugins.push(device);
+                            }
+                        } else {
+                            cardsobj.push({"card":device.name, "name":device.description, "plugins":[device]});
+                        }
+                    });
+                    var ind = 0;
+                    cardsobj.forEach((card) => {
+                        var setit = 'Set';
+                        if (card.plugins.find(e => e.name == res.cursettings.audioOutputDevice)){
+                            setit = "<img src='/IMG/Check_16.svg')/>";
+                        }
+                        var whichvar = card.card;
+                        var selectplugin = "";
+                        if (card.plugins.length > 1){
+                            selectplugin = '<select id="cardselect' + ind + '">';
+                            card.plugins.forEach((plugin) => {
+                                selectplugin += '<option value="' + plugin.name + '"';
+                                if (res.cursettings.audioOutputDevice == plugin.name){
+                                    selectplugin += " selected";
+                                }
+                                selectplugin += '>' + plugin.description.split('/').splice(1).join("/") + " [" + plugin.name.split(":")[0] + ']</option>';
+                            });
+                            selectplugin += "</select>";
+                            whichvar = "selectelement_" + "#cardselect"+ind;
+                        } 
+                        ht += "<div class='device'><div class='device-main'>" + card.name + "</div>";
+                        ht += "<div class='device-select'>" + selectplugin + "</div>";
+                        ht += "<div class='setit' onclick='setSetting(\"audioOutputDevice\", \"" + whichvar + "\",\"Setting audio device\");'>";
+                        ht += setit + "</div>";
+                        ht += "<div class='spinner'><img src='IMG/Spin.svg'/></div>";
+                        ht += "</div>";
+                        ind++;
+                    });
+                    if (res.audiodevices.length > selectedaudiodevices.length){
+                        if (showfullaudiodevicelist){
+                            ht += "<div id='toggleshowalldevices' onclick='toggleaudiodeviceview()'>show less</div>";
+                        } else {
+                            ht += "<div id='toggleshowalldevices' onclick='toggleaudiodeviceview()'>show all options (advanced)</div>";
+                        }
+                    }
+                 }
                 $('#devices').html(ht); 
                 var playonstart = res.cursettings.playonstart;
                 if (playonstart == "true" || playonstart == null){
@@ -588,8 +667,21 @@ function changemfd(i){
     });
 }
 
+function toggleaudiodeviceview(){
+    showfullaudiodevicelist = !showfullaudiodevicelist;
+    browsepane('settings');
+}
+
 function setSetting(obj,key,msg){
+    if (key.includes('selectelement_')){
+        var ele = key.replace('selectelement_','');
+        console.log("ele " + ele);
+        console.log("selected " + $("#cardselect4").find(':selected').val());
+        key = $(ele).find(':selected').val();
+    }
+    console.log("setting " + obj + " with " + key);
     api.setSetting(obj,key).then(function(ret){
+        browsepane('settings');
         if (ret.success !== 200){
             showToast('Something went wrong');
         } else {
