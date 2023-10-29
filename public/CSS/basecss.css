@@ -421,7 +421,7 @@ h3, .h3 {
     color:grey;
 }
 
-#devices .device{
+.device{
     display: flex;
     flex-direction: row;
     padding: 10px;
@@ -433,25 +433,25 @@ h3, .h3 {
     margin-bottom: 10px;
 }
 
-#devices .device .device-main {
+.device .device-main {
     flex:60%;
 }
 
-#devices .device .device-select {
+.device .device-select {
   flex:30%;
 }
 
-#devices .device .device-select select {
+.device .device-select select {
   width:100%;
   border-color: #aaa;
 }
 
-#devices .device .device-main input{
+.device .device-main input{
     margin-top: 5px;
     background:#f7f7f7;
 }
 
-#devices .device .setit {
+.device .setit {
     flex:10%;
     text-align: right;
     padding-right: 10px;

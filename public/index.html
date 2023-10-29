@@ -80,6 +80,18 @@
                         <div id="devices"></div>
                         <div id="loadingdevices"><div class="spinner"><img src='IMG/Spin.svg'/></div></div> 
                         <h3>Other Settings</h3>
+                        <div class='device'>
+                          <div class='device-main'>Replay gain</div>
+                          <div class='device-select'>
+                            <select id="replayselect">
+                              <option value="album">album level</option>
+                              <option value="track">track level</option>
+                              <option value="no">no replay gain</option>
+                            </select>
+                          </div>
+                          <div class='setit' onclick='setSetting("replayGain", "selectelement_#replayselect","Setting replayGain");'>Set</div>
+                          <div class='spinner'><img src='IMG/Spin.svg'/></div>
+                        </div>
                         <div>
                           <form id="playonstartform">
                             <input type="checkbox" id="playonstart" name="playonstart" value="true" checked />

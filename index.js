@@ -154,7 +154,7 @@ app.post('/setSetting', async function (req, res) {
     //return
     console.log("setting a new setting + " + req.body.obj + " = " + req.body.key);
     playlist.setSetting(req.body.obj, req.body.key);
-    if (req.body.obj == "audioOutputDevice"){
+    if (req.body.obj == "audioOutputDevice" || req.body.obj == "replayGain"){
         restartplayer();
     }
     res.json({"success":200});
@@ -356,6 +356,7 @@ function createNewPlayer(){
                     '--no-initial-audio-sync',
                     '--audio-fallback-to-null=yes',
                     '--audio-device=' + playlist.getSettings().audioOutputDevice,
+                    '--replaygain=' + playlist.getSettings().replayGain,
                     '--ytdl-format=bestaudio']; 
     if (os.platform() == 'linux'){
         mpvargs.push('--alsa-resample=yes');

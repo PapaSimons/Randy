@@ -469,6 +469,7 @@ function browsepane(mode){
                 templist.connectedDevices = [];
                 templist.audiodDevices = [];
                 var founddev = false;
+                //storage devices
                 if (res.devices.length > 0){
                      for (i in res.devices){
                         templist.connectedDevices.push(res.devices[i].path);
@@ -568,6 +569,7 @@ function browsepane(mode){
                     }
                  }
                 $('#devices').html(ht); 
+                $('#replayselect').val(res.cursettings.replayGain);
                 var playonstart = res.cursettings.playonstart;
                 if (playonstart == "true" || playonstart == null){
                     $('#playonstart').prop("checked", true);
