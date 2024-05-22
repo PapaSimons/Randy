@@ -197,6 +197,9 @@ io.on('connection', function(socket){
     psocket = socket;
     
     console.log('a user connected');
+
+    //volume
+    io.sockets.emit('volume', playlist.getVolume());
     
     //check if there is a playlist or music folder
     if (!checkmf() && (!playlist.getPlayList().length > 0)){
@@ -237,6 +240,13 @@ io.on('connection', function(socket){
     socket.on('seek', function(msg){
       console.log('seek - ' + msg);
       player.seek(msg, 'absolute');
+    });
+
+    socket.on('volume', async function(msg){
+      console.log('volume - ' + msg);
+      player.setProperty('volume', parseInt(msg));
+      playlist.setVolume(parseInt(msg));
+      io.sockets.emit('volume', msg);
     });
     
     socket.on('playnow', function(msg){
@@ -368,6 +378,7 @@ function createNewPlayer(){
         } else {
             console.log("New mpv player started on Idle");
             player = newplayer;
+            player.setProperty('volume', playlist.getVolume());
             //load the current song
             if (playlist.getPlayList().length > 0){
                 var playonstart = playlist.getSettings().playonstart;
@@ -389,6 +400,9 @@ function createNewPlayer(){
                 if (seekable){
                     io.sockets.emit('duration', t);
                 }
+            });
+            player.observeProperty('volume', function(t){
+                io.sockets.emit('volume', t);
             });
             player.observeProperty('audio-bitrate', function(t){
                 if (t && t != null){
@@ -451,6 +465,11 @@ function createNewPlayer(){
                 console.log('idle - loading next song');
                 playsong(playlist.nextsong());
             });
+
+            player.getProperty('volume').then(function(vol){
+                console.log('-- Volume is: ' + vol);
+            });
+            
             /*
             //finished playing a file
             player.onEndFile(() => {

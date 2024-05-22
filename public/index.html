@@ -99,7 +99,7 @@
                           </form>
                         </div>
                         <div id="sd_but" class="settings-butt2" onclick="poweroff()">Power off</div>
-                        <div class="randyversion">v1.0.17</div>
+                        <div class="randyversion">v1.0.20</div>
                     </div>
                     <div id="browse-album">  
                       &nbsp;
@@ -112,7 +112,6 @@
                   <div class="inner-center">
                     <img class="browse-top-menu-icon clickable" id="homebutt" onclick="browsepane('init');" src="IMG/House_01.svg"/>
                     <img class="browse-top-menu-icon clickable" onclick="browsepane('files');" src="IMG/Folder.svg"/>
-                    <!--<img class="browse-top-menu-icon clickable" id="stickybutt" onclick="browsepane('stickies');" src="IMG/icon_lovehol.png"/>-->
                     <img class="browse-top-menu-icon clickable" onclick="browsepane('settings');" src="IMG/Settings.svg"/>
                   </div>
                 </div>
@@ -120,8 +119,19 @@
           </div>
           <div id="playlist-pane">
             <div id="playlist-pane-top">
-                <div id="top-icon-menu"><img class="clickable" src="IMG/Menu_Alt_04.svg"/></div>
-                <div id="top-icon-menu-mobile"><img class="clickable" src="IMG/Menu_Alt_04.svg"/></div>
+                <div id="top-icon-menu" class="clickable">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:20px; height:20px">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 5.25h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5" />
+                  </svg>                  
+                </div>
+                <div id="top-icon-menu-mobile" class="clickable">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:20px; height:20px">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 5.25h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5" />
+                  </svg>
+                </div>
+                <div id="top-icon-menu-volume">
+                  <input type="range" class="slider" value="0" id="volume-slider" onchange="changeVolume(this.value)">
+                </div>
                 <div id="top-text"><img class="clickable" src="IMG/Randy.png"/></div>
             </div>
             <div id="playlist-pane-songlist">
@@ -130,13 +140,21 @@
             <div id="playlist-pane-player">
                 <div id="control-panel" class="control-panel">
                     <div class="controls">
-                        <div class="prev"></div>
+                        <div class="prev">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:24px;height:24px;">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+                          </svg>                          
+                        </div>
                         <div id='seekdial' usemap="hackdial">
                             <input type="text" value="50" class="dial" id="dial" usemap="hackdial">
                         </div>
                         <div id="play" class="album-art" usemap="hackalbum"></div>
                         <!--<div  class="play"></div>-->
-                        <div class="next"></div>
+                        <div class="next">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:24px;height:24px;">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                          </svg>                          
+                        </div>
                         
                         <map name="hackalbum">
                             <area shape="circle" coords="246,246,246" />

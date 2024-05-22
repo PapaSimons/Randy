@@ -223,6 +223,10 @@ socket.on('duration', function(obj){
     cursong.find('.onesong-len').attr("len",obj);
 });
 
+socket.on('volume', function(obj){
+    document.getElementById("volume-slider").value = obj;
+});
+
 socket.on('newstickies', function(obj){
     populateStickies($('.browse-init-sticky'), 5);
 });
@@ -612,6 +616,12 @@ function populateStickies(ele, lim){
          }
         ele.html(ht); 
     });
+}
+
+//volume//
+function changeVolume(val){
+    console.log('vol ' + val);
+    socket.emit('volume', val);
 }
 
 //knob//
