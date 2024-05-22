@@ -29,13 +29,12 @@ for i in $INSTALL_PKGS; do
 done
 
 echo "-------------------------------------------"
-echo "######>>> installing nodejs"
+echo "######>>> installing nodejs (using fnm)"
 echo "-------------------------------------------"
 
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
-source ~/.bashrc
-nvm install 22
-node -v 
+curl -fsSL https://fnm.vercel.app/install | bash
+fnm use --install-if-missing 22
+node -v
 npm -v
 
 echo "-------------------------------------------"
