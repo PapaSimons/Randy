@@ -33,6 +33,11 @@ echo "######>>> installing nodejs (using fnm)"
 echo "-------------------------------------------"
 
 curl -fsSL https://fnm.vercel.app/install | bash
+cat <<EOF > /root/.bashrc
+# fnm
+  export PATH="/root/.local/share/fnm:$PATH"
+  eval "`fnm env`"
+EOF
 source /root/.bashrc
 fnm use --install-if-missing 22
 node -v
