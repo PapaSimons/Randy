@@ -18,7 +18,6 @@
     "metaget": "^1.0.7",
     "mpv-ipc": "^0.1.3",
     "music-metadata": "^7.13.4",
-    "needle": "^3.2.0",
     "obaa": "^2.1.1",
     "simple-json-db": "^2.0.0",
     "smart-observe": "^1.0.4",
