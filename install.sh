@@ -32,13 +32,12 @@ echo "-------------------------------------------"
 echo "######>>> installing nodejs"
 echo "-------------------------------------------"
 
-apt-get install -y ca-certificates curl gnupg
-mkdir -p /etc/apt/keyrings
-curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
-NODE_MAJOR=20
-echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list
-apt-get update
-apt-get install nodejs -y
+# installs nvm (Node Version Manager)
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+# download and install Node.js
+nvm install 22
+# verifies the right Node.js version is in the environment
+node -v # should print `v22.2.0`
 
 echo "-------------------------------------------"
 echo "######>>> installing mpv"
