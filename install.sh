@@ -29,19 +29,16 @@ for i in $INSTALL_PKGS; do
 done
 
 echo "-------------------------------------------"
-echo "######>>> installing nodejs (using fnm)"
+echo "######>>> installing nodejs"
 echo "-------------------------------------------"
 
-curl -fsSL https://fnm.vercel.app/install | bash
-cat <<EOF > /root/.bashrc
-# fnm
-  export PATH="/root/.local/share/fnm:$PATH"
-  eval "`fnm env`"
-EOF
-source /root/.bashrc
-fnm use --install-if-missing 22
-node -v
-npm -v
+apt-get install -y ca-certificates curl gnupg
+mkdir -p /etc/apt/keyrings
+curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
+NODE_MAJOR=20
+echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list
+apt-get update
+apt-get install nodejs -y
 
 echo "-------------------------------------------"
 echo "######>>> installing mpv"
