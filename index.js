@@ -287,7 +287,7 @@ http.listen(port, function(){
   });
   
 console.log("Welcome to Randy - localhost:" + port + " - !");
-console.log("Raunning on - " + os.platform());
+console.log("Running on - " + os.platform());
   
 ////--- init the player ---////
 

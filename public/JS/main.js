@@ -51,7 +51,7 @@ function debounce(func, wait, immediate) {
     };
 };
 
-$('#search-bar').keyup(debounce(function(event) {
+$('#search-bar').keyup(debounce(async function(event) {
     if (ValidURL($('#search-bar').val())){
         $('#browse-search-url').fadeOut();
         $('#search').addClass('loading');
@@ -82,12 +82,16 @@ $('#search-bar').keyup(debounce(function(event) {
              browsepane("init");
          } else {
             $('#search').addClass('loading');
-             api.searchSongs($('#search-bar').val()).then(function(rtn){
+             api.searchSongs($('#search-bar').val()).then(async function(rtn){
                 var res = rtn.results;     
                 console.log("search results: " + JSON.stringify(res));
                  var ht = "";
                  var hasresults = false;
                  ht += "<img class='clickable' onclick='browsepane(\"init\");' src='IMG/Arrow_Right_MD.svg'/>";
+                 //if no stations try from browser
+                 if (res.radiostations.length == 0){
+                    res.radiostations = await getRadios($('#search-bar').val());
+                 }
                  if (res.radiostations.length > 0){
                     hasresults = true;
                     templist.searchradiostations = [];
@@ -143,6 +147,56 @@ $('#search-bar').keyup(debounce(function(event) {
      }
     return true;
 },500));
+
+function get_radiobrowser_base_url_random() {
+    return get_radiobrowser_base_urls().then(hosts => {
+        var item = hosts[Math.floor(Math.random() * hosts.length)];
+        return item;
+    });
+}
+
+function get_radiobrowser_base_urls() {
+    return new Promise((resolve, reject)=>{
+        var request = new XMLHttpRequest()
+        // If you need https, you have to use fixed servers, at best a list for this request
+        request.open('GET', 'http://all.api.radio-browser.info/json/servers', true);
+        request.onload = function() {
+            if (request.status >= 200 && request.status < 300){
+                var items = JSON.parse(request.responseText).map(x=>"https://" + x.name);
+                resolve(items);
+            }else{
+                reject(request.statusText);
+            }
+        }
+        request.send();
+    });
+}
+
+async function getRadios(keyword){
+    return new Promise(async function(resolve, reject) {
+        var rurl = await get_radiobrowser_base_url_random();
+        console.log("radio link " + rurl + '/json/stations/search/');
+        fetch(rurl + "/json/stations/search?name=" + keyword + '&limit=8', {
+            method: "GET",
+            headers: {"Content-Type": "application/json; charset=utf-8"},
+            //body: JSON.stringify({ name: keyword, limit: 8}),
+        }).then((response) => response.json()).then((data) => {
+            console.log("found " + data.length + " radios");
+            var arr = [];
+            for (var i in data){
+                var radio = data[i];
+                arr.push({ name:radio.name, 
+                            album:radio.country + " - " + radio.language, 
+                            path:{path:radio.url, site:radio.homepage, id:radio.stationuuid, name:radio.name, artist:radio.country + " - " + radio.language}});
+            }
+            console.log("radios: " + JSON.stringify(arr));
+            resolve(arr);
+        }).catch((error) => {
+            console.error("getRadios error: " + error);
+            resolve([]);
+        });
+    }); 
+}
 
 $('#top-text').on('click', function(){
    //api.randy(); 
