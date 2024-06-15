@@ -32,10 +32,18 @@ echo "-------------------------------------------"
 echo "######>>> installing nodejs"
 echo "-------------------------------------------"
 
-curl -fsSL https://deb.nodesource.com/setup_22.x -o nodesource_setup.sh
-bash nodesource_setup.sh
-apt-get install -y nodejs
-node -v
+# Function to install NVM
+install_nvm() {
+    echo "Installing NVM..."
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash
+    export NVM_DIR="$([ -z "${XDG_CONFIG_HOME-}" ] && printf %s "${HOME}/.nvm" || printf %s "${XDG_CONFIG_HOME}/nvm")"
+    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" # This loads nvm
+}
+#install node with nvm
+install_nvm
+node_version=22.3.0
+nvm install $node_version
+nvm use $node_version
 
 echo "-------------------------------------------"
 echo "######>>> installing mpv"
