@@ -23,7 +23,7 @@ echo "-------------------------------------------"
 echo "######>>> installing base packages"
 echo "-------------------------------------------"
 
-INSTALL_PKGS="wget curl tar alsa alsa-utils make build-essential exfat-fuse exfat-utils ntfs-3g"
+INSTALL_PKGS="wget curl tar alsa alsa-utils make build-essential exfat-fuse exfat-utils ntfs-3g policykit-1 udisks2 udev"
 for i in $INSTALL_PKGS; do
   apt-get install -y $i
 done
@@ -120,22 +120,44 @@ echo "-------------------------------------------"
 echo "######>>> setting automount usb drives"
 echo "-------------------------------------------"
 
-apt-get install -y pmount
+# Create udev rules
+echo "Creating udev rules..."
+cat > /etc/udev/rules.d/99-usb-automount.rules << 'EOF'
+ACTION=="add", SUBSYSTEMS=="usb", SUBSYSTEM=="block", ENV{ID_FS_USAGE}=="filesystem", \
+    RUN{program}+="/usr/bin/systemd-mount --no-block --automount=yes --collect $devnode /media/%k"
+EOF
 
-cat <<EOF > /etc/systemd/system/usb-mount@.service
+# Create systemd service
+echo "Creating automount systemd service..."
+cat > /etc/systemd/system/usb-automount.service << 'EOF'
 [Unit]
-Description=Mount USB Drive on %i
+Description=USB Automount Service
+After=udisks2.service
+
 [Service]
 Type=oneshot
-RemainAfterExit=true
-ExecStart=/usr/bin/pmount -u 0000 /dev/%i /media/%i
-ExecStop=/usr/bin/pumount /dev/%i
+RemainAfterExit=yes
+ExecStart=/bin/true
+
+[Install]
+WantedBy=multi-user.target
 EOF
 
-cat <<EOF > /etc/udev/rules.d/99-usb-mount.rules
-ACTION=="add",KERNEL=="sd[a-z][0-9]*",SUBSYSTEMS=="usb",RUN+="/bin/systemctl start usb-mount@%k.service"
-ACTION=="remove",KERNEL=="sd[a-z][0-9]*",SUBSYSTEMS=="usb",RUN+="/bin/systemctl stop usb-mount@%k.service"
-EOF
+# Enable and start services
+echo "Enabling and starting services..."
+systemctl daemon-reload
+systemctl enable udisks2
+systemctl start udisks2
+systemctl enable usb-automount
+systemctl start usb-automount
+
+# Reload udev rules
+echo "Reloading udev rules..."
+udevadm control --reload-rules
+udevadm trigger
+
+echo "USB drives should now automount on insertion."
+echo "Mounted devices will appear in /media/"
 
 echo "-------------------------------------------"
 echo "######>>> setting up systemd node deamon"
