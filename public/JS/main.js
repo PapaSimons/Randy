@@ -809,6 +809,7 @@ function songoptions(obj,i){
     //add delete to stickies
     if (obj.indexOf("stickies") != -1){
         ht += "<img class='clickable' title='Remove' onclick='doSongOption(\"unstick\",\""+obj+"\",\""+i+"\")' src='IMG/Trash_Full.svg'/>";
+        ht += "<img class='clickable' title='Add to Stickies' onclick='doSongOption(\"stick\",\""+obj+"\",\""+i+"\")' src='IMG/pencil-line.svg'/>";
     }
     ht += "</div>";
     return ht;
