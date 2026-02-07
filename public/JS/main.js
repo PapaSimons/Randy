@@ -334,8 +334,8 @@ socket.on('nowplaying', function(obj){
     var al = encodeURI(obj.albumart);
     var sign = "";
     if (!ValidAAURL(al)){
-        al = 'https://doodleipsum.com/500x500?n=' + Math.random();
-        sign = '<span>No Album Cover...?<br/>Randy got you covered! (<a href="https://doodleipsum.com/" target="_blank">doodleipsum</a>)</span>';
+        al = 'https://api.dicebear.com/9.x/notionists/svg?seed='+obj.album;
+        sign = '<span>No Album Cover...?<br/>Randy got you covered! (<a href="https://www.dicebear.com/" target="_blank">https://www.dicebear.com/</a>)</span>';
     }
     if (cursong != null){
         cursong.find(".onesong-tit").html(obj.title);
