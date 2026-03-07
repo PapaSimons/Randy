@@ -244,7 +244,8 @@ io.on('connection', function(socket){
 
     socket.on('volume', async function(msg){
       console.log('volume - ' + msg);
-      player.setProperty('volume', parseInt(msg));
+      //player.setProperty('volume', parseInt(msg));
+      setVolume(parseInt(msg));
       playlist.setVolume(parseInt(msg));
       io.sockets.emit('volume', msg);
     });
@@ -354,6 +355,10 @@ function emitproblem(){
     io.sockets.emit('problem', {});
 }
 
+async function setVolume(vol) {
+    player.setProperty("volume", vol); 
+}
+
 function createNewPlayer(){
     //create player instance
     var mpvargs = ['--no-config', 
@@ -364,13 +369,18 @@ function createNewPlayer(){
                     'script-opts=ytdl_hook-ytdl_path=yt-dlp',
                     '--audio-display=no',
                     '--no-initial-audio-sync',
+                    '--audio-format=float',
                     '--audio-fallback-to-null=yes',
+                    '--af=lavfi=[dynaudnorm=f=75:g=15]',
                     '--audio-device=' + playlist.getSettings().audioOutputDevice,
-                    '--replaygain=' + playlist.getSettings().replayGain,
+                    //'--replaygain=' + playlist.getSettings().replayGain,
+                    '--replaygain=no',
                     '--ytdl-format=bestaudio']; 
     if (os.platform() == 'linux'){
         mpvargs.push('--alsa-resample=yes');
         mpvargs.push('--ao=alsa');
+        mpvargs.push('--volume=100');
+        mpvargs.push('--volume-max=100');
     }
     createPlayer({ args:mpvargs }, (err, newplayer) => {
         if (err) {
@@ -378,7 +388,9 @@ function createNewPlayer(){
         } else {
             console.log("New mpv player started on Idle");
             player = newplayer;
-            player.setProperty('volume', playlist.getVolume());
+            //set initial saved volume
+            //player.setProperty('volume', playlist.getVolume());
+            setVolume(playlist.getVolume());
             //load the current song
             if (playlist.getPlayList().length > 0){
                 var playonstart = playlist.getSettings().playonstart;
