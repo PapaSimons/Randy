@@ -12,7 +12,7 @@ jobs:
         run: chmod +x build-void.sh
 
       - name: Run Build Script
-        run: ./workflows/build-void.sh
+        run: ./build-void.sh
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
