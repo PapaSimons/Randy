@@ -1,6 +1,10 @@
 name: Build Randy OS Installer
 on: workflow_dispatch
 
+# Required permission for GitHub Actions to create a Release
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -30,8 +34,11 @@ jobs:
                   -map randy-installer-env/localhost.apkovl.tar.gz /localhost.apkovl.tar.gz \
                   -boot_image any replay
 
-      - name: Upload Etcher-Ready Artifact
-        uses: actions/upload-artifact@v4
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
-          name: Randy-USB-Installer
-          path: randy-installer.iso
+          name: Randy OS Installer (Latest)
+          tag_name: latest
+          files: randy-installer.iso
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

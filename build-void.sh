@@ -197,7 +197,7 @@ rm -rf overlay
 
 echo "######>>> Starting Docker build environment to compile the OS..."
 docker run --rm --privileged -v $(pwd):/workspace alpine:latest sh -c '
-    apk add --no-cache wget tar xz curl grep >/dev/null
+    apk add --no-cache wget tar xz curl grep gzip >/dev/null
     URL="https://repo-default.voidlinux.org/live/current/"
     LATEST_TAR=$(curl -s $URL | grep -o "void-x86_64-ROOTFS-[0-9]*.tar.xz" | head -n 1)
     
@@ -224,7 +224,7 @@ docker run --rm --privileged -v $(pwd):/workspace alpine:latest sh -c '
     
     echo "-> Packaging the final OS payload to workspace..."
     cd rootfs
-    tar -cz . > /workspace/randy-os-intel.tar.gz
+    tar -c . | gzip -9 > /workspace/randy-os-intel.tar.gz
 '
 
 echo "######>>> DONE!"
