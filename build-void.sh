@@ -4,34 +4,42 @@ echo "######>>> Setting up workspace..."
 mkdir -p randy-installer-env
 cd randy-installer-env
 
-# Pre-create the target file with open permissions to satisfy macOS/Docker volume limits
 touch randy-os-intel.tar
 chmod 777 randy-os-intel.tar
 
 echo "######>>> Generating the Void OS setup script..."
-touch randy-setup.sh
-chmod 777 randy-setup.sh
 cat << 'EOF' > randy-setup.sh
 #!/bin/sh
 
-# FIX: Bypass the Fastly CDN entirely to avoid the HTTP 416 Range header bug
+# Bypass the Fastly CDN entirely to avoid the HTTP 416 Range header bug
 mkdir -p /etc/xbps.d
 echo "repository=https://repo-fi.voidlinux.org/current" > /etc/xbps.d/00-repository-main.conf
 
-rm -rf /var/cache/xbps
-mkdir -p /var/cache/xbps
+rm -rf /var/cache/xbps/* 2>/dev/null
+rm -f /var/db/xbps/https* 2>/dev/null
 
-# Sync and update xbps first
-xbps-install -S -y
+xbps-install -S -f -y
 xbps-install -u -y xbps
 
-# Clear cache again just in case, then run full system update
-rm -rf /var/cache/xbps
-mkdir -p /var/cache/xbps
+rm -rf /var/cache/xbps/* 2>/dev/null
+rm -f /var/db/xbps/https* 2>/dev/null
+xbps-install -S -f -y
 xbps-install -Su -y
 
-# Proceed with installing all necessary dependencies
-xbps-install -y wget curl tar alsa-utils make base-devel ntfs-3g udisks2 eudev nodejs mpv yt-dlp udevil linux linux-firmware grub efibootmgr wpa_supplicant dhcpcd
+# ADDED: openssh and avahi for network broadcasting and remote access
+xbps-install -y wget curl tar alsa-utils make base-devel ntfs-3g udisks2 eudev nodejs mpv yt-dlp udevil linux linux-firmware grub efibootmgr wpa_supplicant dhcpcd openssh avahi
+
+# ADDED: Set Hostname to "randy"
+echo "randy" > /etc/hostname
+cat <<'HOSTS_EOF' > /etc/hosts
+127.0.0.1 localhost
+::1 localhost
+127.0.1.1 randy
+HOSTS_EOF
+
+# ADDED: Create 'randy' user with password 'randy'
+useradd -m -s /bin/bash -G wheel,audio,video,storage randy
+echo "randy:randy" | chpasswd
 
 cat <<'INNER_EOF' > /etc/asound.conf
 defaults.pcm.card 1
@@ -68,9 +76,13 @@ chmod +x /etc/sv/randy-node/run
 ln -sf /etc/sv/devmon /etc/runit/runsvdir/default/devmon
 ln -sf /etc/sv/randy-node /etc/runit/runsvdir/default/randy-node
 
-# Clean up downloaded packages to keep the final OS image small
+# ADDED: Enable SSH and Network Broadcasting services
+ln -sf /etc/sv/sshd /etc/runit/runsvdir/default/sshd
+ln -sf /etc/sv/dbus /etc/runit/runsvdir/default/dbus
+ln -sf /etc/sv/avahi-daemon /etc/runit/runsvdir/default/avahi-daemon
+
 xbps-remove -Oo -y
-rm -rf /var/cache/xbps
+rm -rf /var/cache/xbps/* 2>/dev/null
 EOF
 chmod +x randy-setup.sh
 
@@ -181,13 +193,13 @@ rm -rf overlay
 echo "######>>> Starting Docker build environment to compile the OS..."
 docker run --rm --privileged -v $(pwd):/workspace alpine:latest sh -c '
     apk add --no-cache wget tar xz curl grep >/dev/null
-    URL="https://repo-fi.voidlinux.org/live/current/"
+    URL="https://repo-default.voidlinux.org/live/current/"
     LATEST_TAR=$(curl -s $URL | grep -o "void-x86_64-ROOTFS-[0-9]*.tar.xz" | head -n 1)
     
     mkdir -p /build_env
     cd /build_env
     
-    echo "-> Downloading Void Linux Base from Tier-1 Mirror..."
+    echo "-> Downloading Void Linux Base..."
     wget -q "$URL$LATEST_TAR" -O rootfs.tar.xz
     
     mkdir -p rootfs
@@ -205,9 +217,9 @@ docker run --rm --privileged -v $(pwd):/workspace alpine:latest sh -c '
     
     umount -l rootfs/dev rootfs/sys rootfs/proc
     
-    echo "-> Packaging the final OS payload to macOS workspace..."
+    echo "-> Packaging the final OS payload to workspace..."
     cd rootfs
     tar -c . > /workspace/randy-os-intel.tar
 '
 
-echo "######>>> DONE! Check your folder for randy-os-intel.tar and localhost.apkovl.tar.gz"
+echo "######>>> DONE!"
