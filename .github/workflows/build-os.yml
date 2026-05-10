@@ -30,8 +30,11 @@ jobs:
                   -map randy-installer-env/localhost.apkovl.tar.gz /localhost.apkovl.tar.gz \
                   -boot_image any replay
 
+      - name: Compress ISO
+        run: gzip -9 randy-installer.iso  # -9 is the "Maximum Compression" setting
+
       - name: Upload Etcher-Ready Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Randy-USB-Installer-ISO
-          path: randy-installer.iso
+          name: Randy-USB-Installer-GZ
+          path: randy-installer.iso.gz
