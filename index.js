@@ -371,7 +371,7 @@ function createNewPlayer(){
                     '--no-initial-audio-sync',
                     '--audio-format=float',
                     '--audio-fallback-to-null=yes',
-                    '--af=lavfi=[dynaudnorm=f=75:g=15]',
+                    //'--af=lavfi=[dynaudnorm=f=75:g=15]',
                     '--audio-device=' + playlist.getSettings().audioOutputDevice,
                     //'--replaygain=' + playlist.getSettings().replayGain,
                     '--replaygain=no',
