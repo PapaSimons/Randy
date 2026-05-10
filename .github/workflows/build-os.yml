@@ -26,15 +26,12 @@ jobs:
           echo "Baking custom files into the ISO..."
           xorriso -indev alpine-standard-3.19.1-x86_64.iso \
                   -outdev randy-installer.iso \
-                  -map randy-installer-env/randy-os-intel.tar /randy-os-intel.tar \
+                  -map randy-installer-env/randy-os-intel.tar.gz /randy-os-intel.tar.gz \
                   -map randy-installer-env/localhost.apkovl.tar.gz /localhost.apkovl.tar.gz \
                   -boot_image any replay
-
-      - name: Compress ISO
-        run: gzip -9 randy-installer.iso  # -9 is the "Maximum Compression" setting
 
       - name: Upload Etcher-Ready Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Randy-USB-Installer-GZ
-          path: randy-installer.iso.gz
+          name: Randy-USB-Installer-ISO
+          path: randy-installer.iso

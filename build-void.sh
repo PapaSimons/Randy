@@ -135,8 +135,9 @@ mkdir -p /mnt/randy/boot/efi
 mount $PART_EFI /mnt/randy/boot/efi
 
 echo "-> Unpacking Randy OS (This may take a few minutes)..."
-PAYLOAD=$(find /media -name "randy-os-intel.tar" 2>/dev/null | head -n 1)
-tar -xf "$PAYLOAD" -C /mnt/randy
+
+PAYLOAD=$(find /media -name "randy-os-intel.tar.gz" 2>/dev/null | head -n 1)
+tar -xzf "$PAYLOAD" -C /mnt/randy
 
 echo "-> Configuring Wi-Fi..."
 mkdir -p /mnt/randy/etc/wpa_supplicant
@@ -219,7 +220,7 @@ docker run --rm --privileged -v $(pwd):/workspace alpine:latest sh -c '
     
     echo "-> Packaging the final OS payload to workspace..."
     cd rootfs
-    tar -c . > /workspace/randy-os-intel.tar
+    tar -cz . > /workspace/randy-os-intel.tar.gz
 '
 
 echo "######>>> DONE!"
