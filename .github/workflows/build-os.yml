@@ -33,5 +33,5 @@ jobs:
       - name: Upload Etcher-Ready Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Randy-USB-Installer-ISO
+          name: Randy-USB-Installer
           path: randy-installer.iso

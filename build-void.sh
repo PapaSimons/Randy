@@ -4,14 +4,15 @@ echo "######>>> Setting up workspace..."
 mkdir -p randy-installer-env
 cd randy-installer-env
 
-touch randy-os-intel.tar
-chmod 777 randy-os-intel.tar
+# Pre-create the target file with .gz extension
+touch randy-os-intel.tar.gz
+chmod 777 randy-os-intel.tar.gz
 
 echo "######>>> Generating the Void OS setup script..."
 cat << 'EOF' > randy-setup.sh
 #!/bin/sh
 
-# Bypass the Fastly CDN entirely to avoid the HTTP 416 Range header bug
+# Bypass the Fastly CDN entirely
 mkdir -p /etc/xbps.d
 echo "repository=https://repo-fi.voidlinux.org/current" > /etc/xbps.d/00-repository-main.conf
 
@@ -26,10 +27,10 @@ rm -f /var/db/xbps/https* 2>/dev/null
 xbps-install -S -f -y
 xbps-install -Su -y
 
-# ADDED: openssh and avahi for network broadcasting and remote access
-xbps-install -y wget curl tar alsa-utils make base-devel ntfs-3g udisks2 eudev nodejs mpv yt-dlp udevil linux linux-firmware grub efibootmgr wpa_supplicant dhcpcd openssh avahi
+# Install core dependencies (using linux-firmware-network to save space over full linux-firmware)
+xbps-install -y wget curl tar alsa-utils make base-devel ntfs-3g udisks2 eudev nodejs mpv yt-dlp udevil linux linux-firmware-network grub efibootmgr wpa_supplicant dhcpcd openssh avahi
 
-# ADDED: Set Hostname to "randy"
+# Set Hostname
 echo "randy" > /etc/hostname
 cat <<'HOSTS_EOF' > /etc/hosts
 127.0.0.1 localhost
@@ -37,10 +38,11 @@ cat <<'HOSTS_EOF' > /etc/hosts
 127.0.1.1 randy
 HOSTS_EOF
 
-# ADDED: Create 'randy' user with password 'randy'
+# Create 'randy' user
 useradd -m -s /bin/bash -G wheel,audio,video,storage randy
 echo "randy:randy" | chpasswd
 
+# Configure Bit-Perfect Audio
 cat <<'INNER_EOF' > /etc/asound.conf
 defaults.pcm.card 1
 defaults.ctl.card 1
@@ -51,12 +53,14 @@ pcm.!default {
 INNER_EOF
 rm -f .asoundrc
 
+# Download and install Node App
 LOCATION=$(curl -s https://api.github.com/repos/papasimons/Randy/releases/latest | grep "tag_name" | awk '{print "https://github.com/papasimons/Randy/archive/" substr($2, 2, length($2)-3) ".tar.gz"}')
 curl -L -o randy_release.tar.gz $LOCATION
 mkdir -p /opt/Randy
 tar xvfz randy_release.tar.gz --strip 1 -C /opt/Randy
 cd /opt/Randy && npm install
 
+# Automount Service
 mkdir -p /etc/sv/devmon
 cat <<'INNER_EOF' > /etc/sv/devmon/run
 #!/bin/sh
@@ -65,6 +69,7 @@ exec devmon --automount --mount-dir /media
 INNER_EOF
 chmod +x /etc/sv/devmon/run
 
+# Node Daemon Service
 mkdir -p /etc/sv/randy-node
 cat <<'INNER_EOF' > /etc/sv/randy-node/run
 #!/bin/sh
@@ -73,14 +78,14 @@ exec /usr/bin/node /opt/Randy/index.js
 INNER_EOF
 chmod +x /etc/sv/randy-node/run
 
+# Enable Services
 ln -sf /etc/sv/devmon /etc/runit/runsvdir/default/devmon
 ln -sf /etc/sv/randy-node /etc/runit/runsvdir/default/randy-node
-
-# ADDED: Enable SSH and Network Broadcasting services
 ln -sf /etc/sv/sshd /etc/runit/runsvdir/default/sshd
 ln -sf /etc/sv/dbus /etc/runit/runsvdir/default/dbus
 ln -sf /etc/sv/avahi-daemon /etc/runit/runsvdir/default/avahi-daemon
 
+# Cleanup
 xbps-remove -Oo -y
 rm -rf /var/cache/xbps/* 2>/dev/null
 EOF
@@ -135,7 +140,6 @@ mkdir -p /mnt/randy/boot/efi
 mount $PART_EFI /mnt/randy/boot/efi
 
 echo "-> Unpacking Randy OS (This may take a few minutes)..."
-
 PAYLOAD=$(find /media -name "randy-os-intel.tar.gz" 2>/dev/null | head -n 1)
 tar -xzf "$PAYLOAD" -C /mnt/randy
 
