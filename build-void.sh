@@ -179,7 +179,7 @@ cd ..
 rm -rf overlay
 
 echo "######>>> Starting Docker build environment to compile the OS..."
-docker run --rm -it --platform --privileged -v $(pwd):/workspace alpine:latest sh -c '
+docker run --rm --privileged -v $(pwd):/workspace alpine:latest sh -c '
     apk add --no-cache wget tar xz curl grep >/dev/null
     URL="https://repo-fi.voidlinux.org/live/current/"
     LATEST_TAR=$(curl -s $URL | grep -o "void-x86_64-ROOTFS-[0-9]*.tar.xz" | head -n 1)
