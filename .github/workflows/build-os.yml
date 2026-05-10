@@ -9,10 +9,10 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Make script executable
-        run: chmod +x workflows/build.sh
+        run: chmod +x build-void.sh
 
       - name: Run Build Script
-        run: ./workflows/build.sh
+        run: ./workflows/build-void.sh
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
