@@ -24,10 +24,10 @@ jobs:
           sudo apt-get install -y xorriso
           
           echo "Downloading base Alpine Linux ISO..."
-          wget -q https://dl-cdn.alpinelinux.org/alpine/v3.19/releases/x86_64/alpine-standard-3.19.1-x86_64.iso
+          wget -q https://dl-cdn.alpinelinux.org/alpine/v3.19/releases/x86_64/alpine-extended-3.19.1-x86_64.iso
           
           echo "Baking custom files into the ISO..."
-          xorriso -indev alpine-standard-3.19.1-x86_64.iso \
+          xorriso -indev alpine-extended-3.19.1-x86_64.iso \
                   -outdev randy-installer.iso \
                   -map randy-installer-env/localhost.apkovl.tar.gz /localhost.apkovl.tar.gz \
                   -boot_image any replay

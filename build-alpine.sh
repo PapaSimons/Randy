@@ -3,11 +3,6 @@
 echo "######>>> Setting up workspace..."
 mkdir -p randy-installer-env/overlay/etc/local.d
 mkdir -p randy-installer-env/overlay/etc/runlevels/default
-mkdir -p randy-installer-env/overlay/offline
-
-echo "######>>> Fetching Offline Wi-Fi Drivers for Universal Boot..."
-FW_PKG=$(curl -s https://dl-cdn.alpinelinux.org/alpine/v3.19/main/x86_64/ | grep -o 'href="linux-firmware-[0-9][^"]*\.apk"' | cut -d'"' -f2 | head -n 1)
-curl -L -o randy-installer-env/overlay/offline/linux-firmware.apk "https://dl-cdn.alpinelinux.org/alpine/v3.19/main/x86_64/$FW_PKG"
 
 # Create the auto-install script that runs when the USB boots
 cat << 'EOF' > randy-installer-env/overlay/etc/local.d/randy-wizard.start
@@ -16,12 +11,9 @@ exec > /dev/tty1 2>&1
 sleep 2
 clear
 
-echo "-> Injecting Offline Wi-Fi Drivers..."
-# Install the firmware we packed into the ISO offline
-apk add --quiet --allow-untrusted /offline/linux-firmware.apk >/dev/null 2>&1
-
-echo "-> Waking up network hardware..."
-# Force the Linux kernel to rescan the motherboard to find the newly supported Wi-Fi chip
+echo "-> Loading Offline Drivers from USB..."
+# Because we are using the Extended ISO, the drivers are already local!
+apk add linux-firmware >/dev/null 2>&1
 mdev -s
 udevadm trigger >/dev/null 2>&1
 sleep 4
@@ -57,7 +49,7 @@ echo "-> Initializing Network Hardware..."
 WIFI_IF=$(ls /sys/class/net | grep -E '^wl|^wlan' | head -n 1)
 
 if [ -z "$WIFI_IF" ]; then
-    echo "ERROR: No Wi-Fi adapter detected! Even with drivers, the hardware is invisible."
+    echo "ERROR: No Wi-Fi adapter detected! Hardware is invisible."
     exit 1
 fi
 
@@ -193,7 +185,6 @@ reboot
 EOF
 chmod +x randy-installer-env/overlay/etc/local.d/randy-wizard.start
 
-# Tell Alpine to run our script on boot
 ln -s /etc/init.d/local randy-installer-env/overlay/etc/runlevels/default/local
 
 echo "######>>> Packaging the Overlay..."
