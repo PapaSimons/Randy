@@ -168,8 +168,6 @@ rm -rf overlay
 echo "######>>> Cloning Alpine Aports for mkimage..."
 git config --global user.name "Randy Builder"
 git config --global user.email "build@randyos.com"
-
-# The GitHub mirror is the most reliable source when building inside GitHub Actions
 git clone --depth=1 https://github.com/alpinelinux/aports.git
 
 echo "######>>> Creating Custom Randy Profile..."
@@ -184,19 +182,24 @@ profile_randy() {
 }
 EOF
 
+# FIX: Create a non-root user specifically to appease Alpine's security checks
+echo "######>>> Setting up builder user (Alpine refuses to compile as root)..."
+adduser -D -G abuild builder
+chown -R builder:abuild /workspace
+
 echo "######>>> Compiling the Custom ISO..."
-# Generate keys silently and link them manually to bypass the broken 'doas' command
-abuild-keygen -n
-cp /root/.abuild/*.rsa.pub /etc/apk/keys/
-echo "PACKAGER_PRIVKEY=\"$(ls /root/.abuild/*.rsa | head -n 1)\"" >> /etc/abuild.conf
+# Generate keys and run the compiler as the new 'builder' user
+su builder -c "abuild-keygen -n"
+cp /home/builder/.abuild/*.rsa.pub /etc/apk/keys/
+echo "PACKAGER_PRIVKEY=\"$(ls /home/builder/.abuild/*.rsa | head -n 1)\"" >> /etc/abuild.conf
 
 cd aports/scripts
-sh mkimage.sh \
+su builder -c "sh mkimage.sh \
   --tag v3.19 \
   --outdir ../../ \
   --arch x86_64 \
   --repository http://dl-cdn.alpinelinux.org/alpine/v3.19/main \
-  --profile randy
+  --profile randy"
 
 cd ../../
 echo "######>>> Injecting the Auto-Installer..."
