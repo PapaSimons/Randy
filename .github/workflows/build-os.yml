@@ -14,29 +14,15 @@ jobs:
       - name: Make script executable
         run: chmod +x build-alpine.sh
 
-      - name: Run Build Script
-        run: ./build-alpine.sh
-
-      - name: Inject Payload into Etcher-Ready ISO
+      - name: Run Native Mkimage Compiler (via Alpine Docker)
         run: |
-          echo "Installing xorriso..."
-          sudo apt-get update
-          sudo apt-get install -y xorriso
-          
-          echo "Downloading base Alpine Linux ISO..."
-          wget -q https://dl-cdn.alpinelinux.org/alpine/v3.19/releases/x86_64/alpine-extended-3.19.1-x86_64.iso
-          
-          echo "Baking custom files into the ISO..."
-          xorriso -indev alpine-extended-3.19.1-x86_64.iso \
-                  -outdev randy-installer.iso \
-                  -map randy-installer-env/localhost.apkovl.tar.gz /localhost.apkovl.tar.gz \
-                  -boot_image any replay
+          docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace alpine:latest sh -c "apk add alpine-sdk build-base apk-tools alpine-conf squashfs-tools xorriso mtools grub-efi curl git && ./build-alpine.sh"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: Randy OS Installer (Latest)
+          name: Randy OS Installer (Native)
           tag_name: latest
-          files: randy-installer.iso
+          files: randy-os-installer.iso
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
