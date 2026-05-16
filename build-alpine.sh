@@ -36,8 +36,23 @@ echo ""
 echo "WARNING: $TARGET_DRIVE will be COMPLETELY WIPED."
 read -p "Press Enter to begin installation..."
 
-# FIX 1: Create the directory before trying to use it
-echo "-> Connecting to Wi-Fi..."
+# ==========================================
+# FIX: Robust Wi-Fi Connection Protocol
+# ==========================================
+echo "-> Initializing Network Hardware..."
+
+# Dynamically find the Wi-Fi interface name
+WIFI_IF=$(ls /sys/class/net | grep -E '^wl|^wlan' | head -n 1)
+
+if [ -z "$WIFI_IF" ]; then
+    echo "ERROR: No Wi-Fi adapter detected!"
+    exit 1
+fi
+
+echo "   [Using Interface]: $WIFI_IF"
+ip link set "$WIFI_IF" up
+sleep 2
+
 mkdir -p /etc/wpa_supplicant
 cat <<WIFI > /etc/wpa_supplicant/wpa_supplicant.conf
 network={
@@ -45,14 +60,29 @@ network={
     psk="$WIFI_PASS"
 }
 WIFI
-wpa_supplicant -B -i wlan0 -c /etc/wpa_supplicant/wpa_supplicant.conf >/dev/null 2>&1
 
-# FIX 2: Give the router 8 seconds to assign an IP address
+echo "-> Connecting to Wi-Fi..."
+wpa_supplicant -B -i "$WIFI_IF" -c /etc/wpa_supplicant/wpa_supplicant.conf >/dev/null 2>&1
+
 echo "   Waiting for IP address..."
-udhcpc -i wlan0 -q >/dev/null 2>&1
-sleep 8
+sleep 5
+udhcpc -i "$WIFI_IF" -b -q >/dev/null 2>&1
+sleep 5
 
-# FIX 3: Tell Alpine where the internet is and pre-download the formatting tools
+# Force a highly reliable DNS resolver
+echo "nameserver 1.1.1.1" > /etc/resolv.conf
+
+echo "-> Verifying Internet Connection..."
+if ! ping -c 1 dl-cdn.alpinelinux.org >/dev/null 2>&1; then
+    echo "======================================================="
+    echo " ERROR: Internet connection failed!"
+    echo " Ensure your SSID and Password are correct."
+    echo "======================================================="
+    exit 1
+fi
+echo "   [Connected Successfully!]"
+# ==========================================
+
 echo "-> Preparing formatting tools..."
 echo "http://dl-cdn.alpinelinux.org/alpine/v3.19/main" > /etc/apk/repositories
 echo "http://dl-cdn.alpinelinux.org/alpine/v3.19/community" >> /etc/apk/repositories
@@ -62,7 +92,7 @@ apk add dosfstools grub-efi e2fsprogs >/dev/null 2>&1
 echo "-> Wiping and formatting drive (Native Alpine Sys Mode)..."
 export ERASE_DISKS="$TARGET_DRIVE"
 export BOOTLOADER="grub"
-setup-disk -m sys -s 0 "$TARGET_DRIVE"
+setup-disk -m sys -s 0 "$TARGET_DRIVE" >/dev/null 2>&1
 
 echo "-> Drive formatted! Mounting to inject Randy..."
 PART_ROOT=$(blkid | grep "$TARGET_DRIVE" | grep 'TYPE="ext4"' | cut -d: -f1)
@@ -72,12 +102,30 @@ mount -t proc /proc /mnt/proc
 mount --rbind /sys /mnt/sys
 mount --rbind /dev /mnt/dev
 
-echo "-> Installing Node.js, Audio Tools, and gcompat..."
+echo "-> Preparing Network Config for permanent OS..."
+cat <<INNER > /mnt/etc/network/interfaces
+auto lo
+iface lo inet loopback
+
+auto $WIFI_IF
+iface $WIFI_IF inet dhcp
+INNER
+cp /etc/wpa_supplicant/wpa_supplicant.conf /mnt/etc/wpa_supplicant/wpa_supplicant.conf
+echo "nameserver 1.1.1.1" > /mnt/etc/resolv.conf
+
+echo "-> Installing Node.js, Audio Tools, and configuring system..."
 chroot /mnt /bin/sh -c '
   echo "http://dl-cdn.alpinelinux.org/alpine/v3.19/main" > /etc/apk/repositories
   echo "http://dl-cdn.alpinelinux.org/alpine/v3.19/community" >> /etc/apk/repositories
   apk update >/dev/null
-  apk add nodejs npm gcompat alsa-utils mpv yt-dlp curl tar wpa_supplicant avahi openssh eudev >/dev/null
+  apk add nodejs npm gcompat alsa-utils mpv yt-dlp curl tar wpa_supplicant avahi openssh eudev sudo >/dev/null
+  
+  echo "-> Setting up Users and SSH..."
+  adduser -D -s /bin/sh randy
+  echo "randy:randy" | chpasswd
+  adduser randy audio
+  adduser randy wheel
+  echo "%wheel ALL=(ALL) ALL" > /etc/sudoers.d/wheel
   
   echo "-> Setting up Audio..."
   cat <<INNER > /etc/asound.conf
@@ -89,14 +137,7 @@ pcm.!default {
 }
 INNER
   
-  echo "-> Setting up Network..."
-  cat <<INNER > /etc/network/interfaces
-auto lo
-iface lo inet loopback
-
-auto wlan0
-iface wlan0 inet dhcp
-INNER
+  echo "-> Activating Services..."
   rc-update add networking boot >/dev/null
   rc-update add wpa_supplicant boot >/dev/null
   rc-update add avahi-daemon default >/dev/null
@@ -110,6 +151,9 @@ INNER
   tar xzf /tmp/randy.tar.gz --strip 1 -C /opt/Randy
   cd /opt/Randy && npm install >/dev/null 2>&1
   
+  echo "-> Securing App Permissions..."
+  chown -R randy:randy /opt/Randy
+  
   echo "-> Creating Randy Background Service..."
   cat <<INNER > /etc/init.d/randy-node
 #!/sbin/openrc-run
@@ -117,14 +161,12 @@ name="randy-node"
 command="/usr/bin/node"
 command_args="/opt/Randy/index.js"
 command_background=true
+command_user="randy:randy"
 pidfile="/run/randy-node.pid"
 INNER
   chmod +x /etc/init.d/randy-node
   rc-update add randy-node default >/dev/null
 '
-
-# Save Wi-Fi password to the new OS
-cp /etc/wpa_supplicant/wpa_supplicant.conf /mnt/etc/wpa_supplicant/wpa_supplicant.conf
 
 echo "-> Finalizing writes to SSD..."
 sync
