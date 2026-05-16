@@ -177,8 +177,9 @@ profile_randy() {
     title="Randy OS"
     desc="Minimal Audiophile NodeOS Installer"
     profile_abuild="randy"
-    # THE MAGIC HAPPENS HERE:
-    apks="$apks linux-firmware wpa_supplicant util-linux e2fsprogs dosfstools grub-efi"
+    # THE FIX: Force network modules into the boot RAM and explicitly require the kernel
+    initfs_features="ata base cdrom ext2 ext3 ext4 keymap kms raid scsi usb virtio network"
+    apks="$apks linux-lts linux-firmware wpa_supplicant util-linux e2fsprogs dosfstools grub-efi"
 }
 EOF
 
