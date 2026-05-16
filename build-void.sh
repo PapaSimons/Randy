@@ -198,8 +198,15 @@ FSTAB_EOF
 mount -t proc /proc /mnt/randy/proc
 mount --rbind /sys /mnt/randy/sys
 mount --rbind /dev /mnt/randy/dev
-chroot /mnt/randy grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=RandyOS >/dev/null 2>&1
+
+echo "-> Installing Bootloader..."
+chroot /mnt/randy grub-install --target=x86_64-efi --efi-directory=/boot/efi --removable >/dev/null 2>&1
+chroot /mnt/randy grub-mkconfig -o /boot/grub/grub.cfg >/dev/null 2>&1
 chroot /mnt/randy xbps-reconfigure -fa >/dev/null 2>&1
+
+echo "-> Finalizing writes to SSD..."
+sync
+sleep 2
 
 umount -l /mnt/randy/dev /mnt/randy/sys /mnt/randy/proc
 umount /mnt/randy/boot/efi
