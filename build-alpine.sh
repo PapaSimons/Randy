@@ -3,12 +3,29 @@
 echo "######>>> Setting up workspace..."
 mkdir -p randy-installer-env/overlay/etc/local.d
 mkdir -p randy-installer-env/overlay/etc/runlevels/default
+mkdir -p randy-installer-env/overlay/offline
+
+echo "######>>> Fetching Offline Wi-Fi Drivers for Universal Boot..."
+FW_PKG=$(curl -s https://dl-cdn.alpinelinux.org/alpine/v3.19/main/x86_64/ | grep -o 'href="linux-firmware-[0-9][^"]*\.apk"' | cut -d'"' -f2 | head -n 1)
+curl -L -o randy-installer-env/overlay/offline/linux-firmware.apk "https://dl-cdn.alpinelinux.org/alpine/v3.19/main/x86_64/$FW_PKG"
 
 # Create the auto-install script that runs when the USB boots
 cat << 'EOF' > randy-installer-env/overlay/etc/local.d/randy-wizard.start
 #!/bin/sh
 exec > /dev/tty1 2>&1
 sleep 2
+clear
+
+echo "-> Injecting Offline Wi-Fi Drivers..."
+# Install the firmware we packed into the ISO offline
+apk add --quiet --allow-untrusted /offline/linux-firmware.apk >/dev/null 2>&1
+
+echo "-> Waking up network hardware..."
+# Force the Linux kernel to rescan the motherboard to find the newly supported Wi-Fi chip
+mdev -s
+udevadm trigger >/dev/null 2>&1
+sleep 4
+
 clear
 echo "======================================================="
 echo "       Welcome to the Randy OS (Alpine) Installer      "
@@ -36,16 +53,11 @@ echo ""
 echo "WARNING: $TARGET_DRIVE will be COMPLETELY WIPED."
 read -p "Press Enter to begin installation..."
 
-# ==========================================
-# FIX: Robust Wi-Fi Connection Protocol
-# ==========================================
 echo "-> Initializing Network Hardware..."
-
-# Dynamically find the Wi-Fi interface name
 WIFI_IF=$(ls /sys/class/net | grep -E '^wl|^wlan' | head -n 1)
 
 if [ -z "$WIFI_IF" ]; then
-    echo "ERROR: No Wi-Fi adapter detected!"
+    echo "ERROR: No Wi-Fi adapter detected! Even with drivers, the hardware is invisible."
     exit 1
 fi
 
@@ -69,7 +81,6 @@ sleep 5
 udhcpc -i "$WIFI_IF" -b -q >/dev/null 2>&1
 sleep 5
 
-# Force a highly reliable DNS resolver
 echo "nameserver 1.1.1.1" > /etc/resolv.conf
 
 echo "-> Verifying Internet Connection..."
@@ -81,7 +92,6 @@ if ! ping -c 1 dl-cdn.alpinelinux.org >/dev/null 2>&1; then
     exit 1
 fi
 echo "   [Connected Successfully!]"
-# ==========================================
 
 echo "-> Preparing formatting tools..."
 echo "http://dl-cdn.alpinelinux.org/alpine/v3.19/main" > /etc/apk/repositories
@@ -118,7 +128,7 @@ chroot /mnt /bin/sh -c '
   echo "http://dl-cdn.alpinelinux.org/alpine/v3.19/main" > /etc/apk/repositories
   echo "http://dl-cdn.alpinelinux.org/alpine/v3.19/community" >> /etc/apk/repositories
   apk update >/dev/null
-  apk add nodejs npm gcompat alsa-utils mpv yt-dlp curl tar wpa_supplicant avahi openssh eudev sudo >/dev/null
+  apk add linux-firmware nodejs npm gcompat alsa-utils mpv yt-dlp curl tar wpa_supplicant avahi openssh eudev sudo >/dev/null
   
   echo "-> Setting up Users and SSH..."
   adduser -D -s /bin/sh randy
