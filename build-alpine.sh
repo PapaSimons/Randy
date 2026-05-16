@@ -168,8 +168,9 @@ rm -rf overlay
 echo "######>>> Cloning Alpine Aports for mkimage..."
 git config --global user.name "Randy Builder"
 git config --global user.email "build@randyos.com"
-# FIX 1: The correct Alpine GitLab URL
-git clone --depth=1 https://gitlab.alpinelinux.org/alpine/aports.git
+
+# The GitHub mirror is the most reliable source when building inside GitHub Actions
+git clone --depth=1 https://github.com/alpinelinux/aports.git
 
 echo "######>>> Creating Custom Randy Profile..."
 cat << 'EOF' > aports/scripts/mkimg.randy.sh
@@ -184,9 +185,10 @@ profile_randy() {
 EOF
 
 echo "######>>> Compiling the Custom ISO..."
-# FIX 2: Generate keys without triggering the "doas" root error, then copy manually
-abuild-keygen -a -n
+# Generate keys silently and link them manually to bypass the broken 'doas' command
+abuild-keygen -n
 cp /root/.abuild/*.rsa.pub /etc/apk/keys/
+echo "PACKAGER_PRIVKEY=\"$(ls /root/.abuild/*.rsa | head -n 1)\"" >> /etc/abuild.conf
 
 cd aports/scripts
 sh mkimage.sh \
