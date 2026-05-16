@@ -36,8 +36,9 @@ echo ""
 echo "WARNING: $TARGET_DRIVE will be COMPLETELY WIPED."
 read -p "Press Enter to begin installation..."
 
-# Connect to Wi-Fi temporarily to download nodejs
+# FIX 1: Create the directory before trying to use it
 echo "-> Connecting to Wi-Fi..."
+mkdir -p /etc/wpa_supplicant
 cat <<WIFI > /etc/wpa_supplicant/wpa_supplicant.conf
 network={
     ssid="$WIFI_SSID"
@@ -45,9 +46,19 @@ network={
 }
 WIFI
 wpa_supplicant -B -i wlan0 -c /etc/wpa_supplicant/wpa_supplicant.conf >/dev/null 2>&1
-udhcpc -i wlan0 -q >/dev/null 2>&1
 
-# Alpine's native, foolproof partition and format tool
+# FIX 2: Give the router 8 seconds to assign an IP address
+echo "   Waiting for IP address..."
+udhcpc -i wlan0 -q >/dev/null 2>&1
+sleep 8
+
+# FIX 3: Tell Alpine where the internet is and pre-download the formatting tools
+echo "-> Preparing formatting tools..."
+echo "http://dl-cdn.alpinelinux.org/alpine/v3.19/main" > /etc/apk/repositories
+echo "http://dl-cdn.alpinelinux.org/alpine/v3.19/community" >> /etc/apk/repositories
+apk update >/dev/null
+apk add dosfstools grub-efi e2fsprogs >/dev/null 2>&1
+
 echo "-> Wiping and formatting drive (Native Alpine Sys Mode)..."
 export ERASE_DISKS="$TARGET_DRIVE"
 export BOOTLOADER="grub"
