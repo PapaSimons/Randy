@@ -29,10 +29,12 @@ echo "######>>> Packaging the apkovl..."
 cd overlay && tar -czf ../localhost.apkovl.tar.gz * && cd ..
 rm -rf overlay
 
-echo "######>>> Cloning Alpine Aports for native ramdisk compiler..."
+echo "######>>> Cloning Stable Alpine Aports for native ramdisk compiler..."
 git config --global user.name "Randy Builder"
 git config --global user.email "build@randyos.com"
-git clone --depth=1 https://github.com/alpinelinux/aports.git
+
+# THE FIX: Explicitly clone the stable 3.19 branch instead of the cutting-edge master branch
+git clone --branch 3.19-stable --depth=1 https://github.com/alpinelinux/aports.git
 
 echo "######>>> Creating Custom Deployment Profile..."
 cat << 'EOF' > aports/scripts/mkimg.randydeploy.sh
@@ -57,14 +59,13 @@ cp /home/builder/.abuild/*.rsa.pub /etc/apk/keys/
 echo "PACKAGER_PRIVKEY=\"$(ls /home/builder/.abuild/*.rsa | head -n 1)\"" >> /etc/abuild.conf
 
 cd aports/scripts
-# THE FIX: Added --no-cache to bypass the broken cache-dir flag mismatch
+# Cleaned up the unsupported flag; the versions match perfectly now!
 su builder -c "sh mkimage.sh \
   --tag v3.19 \
   --outdir ../../ \
   --arch x86_64 \
   --repository http://dl-cdn.alpinelinux.org/alpine/v3.19/main \
-  --profile randydeploy \
-  --no-cache"
+  --profile randydeploy"
 
 cd ../../
 echo "######>>> Injecting deployment assets onto media..."
