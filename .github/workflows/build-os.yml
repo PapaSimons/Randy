@@ -11,8 +11,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # THE TWEAK: Make both scripts executable before passing them to the Docker container
       - name: Make scripts executable
-        run: chmod +x build-alpine.sh
+        run: chmod +x build-alpine.sh randy-setup.sh
 
       - name: Run Unified Build Environment
         run: |
