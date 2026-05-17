@@ -1,11 +1,11 @@
-name: Build Randy OS System Image
+name: Build Randy OS Complete Deployment System
 on: workflow_dispatch
 
 permissions:
   contents: write
 
 jobs:
-  build:
+  build-rootfs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -18,11 +18,36 @@ jobs:
         run: |
           docker run --privileged --rm -v ${{ github.workspace }}:/workspace -w /workspace alpine:3.19 sh -c "apk add alpine-conf tar curl git && ./build-alpine.sh"
 
-      - name: Create GitHub Release
+      - name: Save RootFS Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: randy-rootfs
+          path: randy-rootfs.tar.gz
+
+  build-ramdisk-iso:
+    needs: build-rootfs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download RootFS Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: randy-rootfs
+          path: .
+
+      - name: Compile Minimal Ramdisk Installer (via Docker)
+        run: |
+          docker run --privileged --rm -v ${{ github.workspace }}:/workspace -w /workspace alpine:3.19 sh -c "apk add alpine-sdk build-base apk-tools alpine-conf squashfs-tools xorriso mtools grub-efi git && ./build-installer-iso.sh"
+
+      - name: Create Complete GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: Randy OS Base Image
+          name: Randy OS Deployment Suite
           tag_name: latest
-          files: randy-rootfs.tar.gz
+          files: |
+            randy-os-installer.iso
+            randy-rootfs.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
