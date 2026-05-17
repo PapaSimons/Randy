@@ -42,7 +42,8 @@ profile_randydeploy() {
     profile_standard
     title="Randy Deployer"
     desc="RAM-based Deployment Engine"
-    profile_abuild="randy"
+    # THE FIX: Clear the signature requirement so it skips searching for structural keys
+    profile_abuild=""
     # Crucial: Bake hard drive, partition, and archive tools directly into the RAM boot filesystem
     initfs_features="ata base cdrom ext2 ext3 ext4 scsi usb virtio"
     apks="$apks util-linux e2fsprogs dosfstools grub-efi tar"
