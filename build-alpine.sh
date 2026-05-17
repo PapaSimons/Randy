@@ -9,15 +9,15 @@ echo "######>>> Creating target directory for pristine OS..."
 mkdir -p /target-rootfs
 
 echo "######>>> Building minimal OS environment in the cloud..."
-# This installs a full, clean Alpine system into /target-rootfs
+# FIX: Give the script just the base mirror domain; it will append /v3.19/main natively
 ./alpine-chroot-install \
   -d /target-rootfs \
   -b v3.19 \
-  -m http://dl-cdn.alpinelinux.org/alpine/v3.19/main \
+  -m http://dl-cdn.alpinelinux.org/alpine \
   -p "linux-firmware nodejs npm gcompat alsa-utils mpv yt-dlp curl tar wpa_supplicant avahi openssh eudev sudo"
 
 echo "######>>> Configuring internal OS architecture..."
-# Now we reach inside that OS image and set up services/users natively
+# Reach inside the generated rootfs and cleanly configure everything
 chroot /target-rootfs /bin/sh -c '
   echo "http://dl-cdn.alpinelinux.org/alpine/v3.19/main" > /etc/apk/repositories
   echo "http://dl-cdn.alpinelinux.org/alpine/v3.19/community" >> /etc/apk/repositories
