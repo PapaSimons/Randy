@@ -10,7 +10,8 @@ mkdir -p /target-rootfs
   -d /target-rootfs \
   -b v3.19 \
   -m http://dl-cdn.alpinelinux.org/alpine \
-  -p "linux-firmware nodejs npm gcompat alsa-utils mpv yt-dlp curl tar wpa_supplicant avahi openssh eudev sudo openrc"
+  # THE FIX: Added build-base back to the chroot blueprint so node-gyp has 'make' available
+  -p "linux-firmware nodejs npm gcompat alsa-utils mpv yt-dlp curl tar wpa_supplicant avahi openssh eudev sudo openrc build-base"
 
 echo "######>>> Sideloading Setup Wizard into Sandbox Assets..."
 cp /workspace/randy-setup.sh /target-rootfs/etc/init.d/randy-setup
@@ -54,9 +55,12 @@ AUDIO
   curl -s -L -o /tmp/randy.tar.gz "$LOC"
   mkdir -p /opt/Randy
   tar xzf /tmp/randy.tar.gz --strip 1 -C /opt/Randy
-  
+ 
   cd /opt/Randy && npm install --no-audit --no-fund || true
   chown -R randy:randy /opt/Randy
+
+  # Clean out the heavy build tools to restore the microscopic RAM footprint
+  apk del build-base >/dev/null 2>&1  
 
   cat <<SERVICE > /etc/init.d/randy-node
 #!/sbin/openrc-run
