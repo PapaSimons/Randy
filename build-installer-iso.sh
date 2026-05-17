@@ -57,16 +57,17 @@ cp /home/builder/.abuild/*.rsa.pub /etc/apk/keys/
 echo "PACKAGER_PRIVKEY=\"$(ls /home/builder/.abuild/*.rsa | head -n 1)\"" >> /etc/abuild.conf
 
 cd aports/scripts
+# THE FIX: Added --no-cache to bypass the broken cache-dir flag mismatch
 su builder -c "sh mkimage.sh \
   --tag v3.19 \
   --outdir ../../ \
   --arch x86_64 \
   --repository http://dl-cdn.alpinelinux.org/alpine/v3.19/main \
-  --profile randydeploy"
+  --profile randydeploy \
+  --no-cache"
 
 cd ../../
 echo "######>>> Injecting deployment assets onto media..."
-# We map BOTH the startup automation script AND the massive 670MB system image onto the boot disc image
 xorriso -indev alpine-randydeploy-v3.19-x86_64.iso \
         -outdev randy-os-installer.iso \
         -map localhost.apkovl.tar.gz /localhost.apkovl.tar.gz \
