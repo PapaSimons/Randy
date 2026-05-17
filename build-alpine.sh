@@ -10,7 +10,6 @@ mkdir -p /target-rootfs
   -d /target-rootfs \
   -b v3.19 \
   -m http://dl-cdn.alpinelinux.org/alpine \
-  # THE FIX: Added build-base back to the chroot blueprint so node-gyp has 'make' available
   -p "linux-firmware nodejs npm gcompat alsa-utils mpv yt-dlp curl tar wpa_supplicant avahi openssh eudev sudo openrc build-base"
 
 echo "######>>> Sideloading Setup Wizard into Sandbox Assets..."
