@@ -9,15 +9,14 @@ echo "######>>> Creating target directory for pristine OS..."
 mkdir -p /target-rootfs
 
 echo "######>>> Building minimal OS environment in the cloud..."
-# FIX: Give the script just the base mirror domain; it will append /v3.19/main natively
+# FIX 1: Included 'build-base', 'python3', and 'openrc' to allow native C++ NPM builds and service management
 ./alpine-chroot-install \
   -d /target-rootfs \
   -b v3.19 \
   -m http://dl-cdn.alpinelinux.org/alpine \
-  -p "linux-firmware nodejs npm gcompat alsa-utils mpv yt-dlp curl tar wpa_supplicant avahi openssh eudev sudo"
+  -p "linux-firmware nodejs npm gcompat alsa-utils mpv yt-dlp curl tar wpa_supplicant avahi openssh eudev sudo build-base python3 openrc"
 
 echo "######>>> Configuring internal OS architecture..."
-# Reach inside the generated rootfs and cleanly configure everything
 chroot /target-rootfs /bin/sh -c '
   echo "http://dl-cdn.alpinelinux.org/alpine/v3.19/main" > /etc/apk/repositories
   echo "http://dl-cdn.alpinelinux.org/alpine/v3.19/community" >> /etc/apk/repositories
@@ -57,6 +56,8 @@ AUDIO
   curl -s -L -o /tmp/randy.tar.gz "$LOC"
   mkdir -p /opt/Randy
   tar xzf /tmp/randy.tar.gz --strip 1 -C /opt/Randy
+  
+  # The compiler tools are ready now, drivelist will compile cleanly!
   cd /opt/Randy && npm install --no-audit --no-fund
   chown -R randy:randy /opt/Randy
 
@@ -72,6 +73,9 @@ pidfile="/run/randy-node.pid"
 SERVICE
   chmod +x /etc/init.d/randy-node
   rc-update add randy-node default
+  
+  echo "-> Cleaning up build dependencies to save disk space..."
+  apk del build-base python3 >/dev/null 2>&1
 '
 
 echo "######>>> Compressing final master image..."
