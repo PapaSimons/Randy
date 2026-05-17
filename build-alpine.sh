@@ -80,6 +80,12 @@ SERVICE
 
 echo "######>>> Compressing final master image..."
 cd /target-rootfs
-tar -czf /workspace/randy-rootfs.tar.gz *
+
+# FIX: Explicitly ignore host kernel runtime mounts so tar doesn't get stuck in an infinite loop
+tar --exclude='proc/*' \
+    --exclude='sys/*' \
+    --exclude='dev/*' \
+    --exclude='run/*' \
+    -czf /workspace/randy-rootfs.tar.gz *
 
 echo "######>>> Phase 1 Build Complete!"
