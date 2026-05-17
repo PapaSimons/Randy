@@ -1,4 +1,4 @@
-name: Build Randy OS Installer
+name: Build Randy OS System Image
 on: workflow_dispatch
 
 permissions:
@@ -14,15 +14,15 @@ jobs:
       - name: Make script executable
         run: chmod +x build-alpine.sh
 
-      - name: Run Native Mkimage Compiler (via Alpine Docker)
+      - name: Compile Randy OS RootFS (via Docker)
         run: |
-          docker run --rm -v ${{ github.workspace }}:/workspace -w /workspace alpine:latest sh -c "apk add alpine-sdk build-base apk-tools alpine-conf squashfs-tools xorriso mtools grub-efi curl git && ./build-alpine.sh"
+          docker run --privileged --rm -v ${{ github.workspace }}:/workspace -w /workspace alpine:3.19 sh -c "apk add alpine-conf tar curl git && ./build-alpine.sh"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: Randy OS Installer (Native)
+          name: Randy OS Base Image
           tag_name: latest
-          files: randy-os-installer.iso
+          files: randy-rootfs.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
