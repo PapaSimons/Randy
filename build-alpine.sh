@@ -6,11 +6,12 @@ curl -sLO https://raw.githubusercontent.com/alpinelinux/alpine-chroot-install/v0
 chmod +x alpine-chroot-install
 mkdir -p /target-rootfs
 
+# THE FIX: We added linux-lts, grub, and the disk formatting tools so the OS has a bootable engine!
 ./alpine-chroot-install \
   -d /target-rootfs \
   -b v3.19 \
   -m http://dl-cdn.alpinelinux.org/alpine \
-  -p "linux-firmware nodejs npm gcompat alsa-utils mpv yt-dlp curl tar wpa_supplicant avahi openssh eudev sudo openrc build-base"
+  -p "linux-lts linux-firmware grub grub-efi efibootmgr parted e2fsprogs dosfstools nodejs npm gcompat alsa-utils mpv yt-dlp curl tar wpa_supplicant avahi openssh eudev sudo openrc build-base"
 
 echo "######>>> Sideloading Setup Wizard into Sandbox Assets..."
 cp /workspace/randy-setup.sh /target-rootfs/etc/init.d/randy-setup
@@ -54,12 +55,11 @@ AUDIO
   curl -s -L -o /tmp/randy.tar.gz "$LOC"
   mkdir -p /opt/Randy
   tar xzf /tmp/randy.tar.gz --strip 1 -C /opt/Randy
- 
+  
   cd /opt/Randy && npm install --no-audit --no-fund || true
   chown -R randy:randy /opt/Randy
-
-  # Clean out the heavy build tools to restore the microscopic RAM footprint
-  apk del build-base >/dev/null 2>&1  
+  
+  apk del build-base >/dev/null 2>&1
 
   cat <<SERVICE > /etc/init.d/randy-node
 #!/sbin/openrc-run
@@ -95,6 +95,29 @@ echo "======================================================="
 echo "       Welcome to the Randy OS Deployment Engine       "
 echo "======================================================="
 echo ""
+
+echo "-> Initializing local offline installer tools..."
+# THE FIX: Dynamically locate the physical USB stick and load tools directly from its offline cache!
+ISO_MNT=""
+for mnt in /media/cdrom /media/usb; do
+    if [ -f "$mnt/randy-rootfs.tar.gz" ]; then
+        ISO_MNT="$mnt"
+        break
+    fi
+done
+
+if [ -z "$ISO_MNT" ]; then
+    ISO_MNT=$(dirname $(find /media -name randy-rootfs.tar.gz | head -n 1))
+fi
+
+if [ -z "$ISO_MNT" ]; then
+    echo "ERROR: Could not locate installation payload on USB."
+    exit 1
+fi
+
+# Load formatting tools directly from the USB without the internet
+apk add parted e2fsprogs dosfstools grub-efi --quiet --repository "$ISO_MNT/apks" --allow-untrusted
+
 echo "-> Locating internal target drives..."
 TARGET_DRIVE=""
 for d in /dev/nvme*n1; do [ -b "$d" ] && TARGET_DRIVE="$d" && break; done
@@ -112,29 +135,47 @@ echo "   WARNING: All data on $TARGET_DRIVE will be wiped!"
 echo ""
 read -p "Press ENTER to deploy Randy OS to the internal drive..."
 
-echo "-> Preparing partitions..."
-dd if=/dev/zero of="$TARGET_DRIVE" bs=1M count=10 conv=notrunc
+echo "-> Preparing UEFI partitions..."
+# THE FIX: Create a dedicated UEFI Boot Partition (FAT32) and a Main System Partition (EXT4)
+dd if=/dev/zero of="$TARGET_DRIVE" bs=1M count=10 conv=notrunc >/dev/null 2>&1
 parted -s "$TARGET_DRIVE" mklabel gpt
-parted -s "$TARGET_DRIVE" mkpart primary ext4 1MiB 100%
+parted -s "$TARGET_DRIVE" mkpart primary fat32 1MiB 513MiB
+parted -s "$TARGET_DRIVE" set 1 esp on
+parted -s "$TARGET_DRIVE" mkpart primary ext4 513MiB 100%
 udevadm settle
 
-PART_ROOT="${TARGET_DRIVE}1"
 if echo "$TARGET_DRIVE" | grep -q "nvme"; then
-    PART_ROOT="${TARGET_DRIVE}p1"
+    PART_EFI="${TARGET_DRIVE}p1"
+    PART_ROOT="${TARGET_DRIVE}p2"
+else
+    PART_EFI="${TARGET_DRIVE}1"
+    PART_ROOT="${TARGET_DRIVE}2"
 fi
 
-echo "-> Formatting ext4 filesystem..."
-mkfs.ext4 -F "$PART_ROOT"
+echo "-> Formatting filesystems..."
+mkfs.fat -F32 "$PART_EFI" >/dev/null 2>&1
+mkfs.ext4 -F "$PART_ROOT" >/dev/null 2>&1
 
 echo "-> Sideloading system payload from RAM disk..."
 mkdir -p /mnt/target
 mount "$PART_ROOT" /mnt/target
+mkdir -p /mnt/target/boot/efi
+mount "$PART_EFI" /mnt/target/boot/efi
 
-tar -xzf /randy-rootfs.tar.gz -C /mnt/target
+tar -xzf "$ISO_MNT/randy-rootfs.tar.gz" -C /mnt/target
 
 echo "-> Installing System Bootloader (GRUB)..."
-apk add grub-efi --root /mnt/target --initdb
-grub-install --target=x86_64-efi --efi-directory=/mnt/target --bootloader-id=alpine --removable
+# THE FIX: Install the bootloader using the context of the newly extracted OS
+chroot /mnt/target grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=randyos --removable >/dev/null 2>&1
+
+ROOT_UUID=$(blkid -s UUID -o value "$PART_ROOT")
+cat << GRUB_CFG > /mnt/target/boot/grub/grub.cfg
+set timeout=2
+menuentry "Randy OS Node" {
+    linux /boot/vmlinuz-lts root=UUID=$ROOT_UUID rw quiet
+    initrd /boot/initramfs-lts
+}
+GRUB_CFG
 
 echo "======================================================="
 echo " SUCCESS! Randy OS has been streamed to your Mini PC.  "
