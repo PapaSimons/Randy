@@ -24,7 +24,7 @@ jobs:
           name: randy-rootfs
           path: randy-rootfs.tar.gz
 
-  build-ramdisk-iso:
+    build-ramdisk-iso:
     needs: build-rootfs
     runs-on: ubuntu-latest
     steps:
@@ -36,6 +36,10 @@ jobs:
         with:
           name: randy-rootfs
           path: .
+
+      # THE FIX: Ensure our new script is allowed to execute!
+      - name: Make installer script executable
+        run: chmod +x build-installer-iso.sh
 
       - name: Compile Minimal Ramdisk Installer (via Docker)
         run: |
