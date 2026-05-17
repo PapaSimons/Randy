@@ -24,7 +24,7 @@ chroot /target-rootfs /bin/sh -c '
   echo "%wheel ALL=(ALL) ALL" > /etc/sudoers.d/wheel
 
   echo "-> Creating First-Boot Wi-Fi Setup Wizard..."
-  cat << 'WIZARD' > /etc/init.d/randy-setup
+  cat << '\''WIZARD'\'' > /etc/init.d/randy-setup
 #!/sbin/openrc-run
 
 description="Randy OS First-Boot Wi-Fi Setup Wizard"
@@ -43,7 +43,7 @@ start() {
     echo "Let's connect your device to your home local network."
     echo ""
 
-    WIFI_IF=$(ls /sys/class/net | grep -E '^wl|^wlan' | head -n 1)
+    WIFI_IF=$(ls /sys/class/net | grep -E '\''^wl|^wlan'\'' | head -n 1)
     if [ -z "$WIFI_IF" ]; then
         echo "ERROR: No internal Wi-Fi adapter detected by the kernel."
         echo "Please connect an Ethernet cable instead."
@@ -58,7 +58,9 @@ start() {
 
     echo "-> Writing secure network configuration..."
     mkdir -p /etc/wpa_supplicant
-    cat << EOF > /etc/wpa_supplicant/wpa_supplicant.conf
+    
+    # FIX: Quoted '\''EOF'\'' token prevents the compilation runner from breaking on syntax parsing
+    cat << '\''EOF'\'' > /etc/wpa_supplicant/wpa_supplicant.conf
 ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=wheel
 update_config=1
 network={
@@ -81,8 +83,8 @@ EOF
         echo "======================================================="
         echo " SUCCESS! Your node is online."
         echo "======================================================="
-        echo " Local Network IP Address: \$LOCAL_IP"
-        echo " SSH Access Command:       ssh randy@\$LOCAL_IP"
+        echo " Local Network IP Address: $LOCAL_IP"
+        echo " SSH Access Command:       ssh randy@$LOCAL_IP"
         echo "======================================================="
         echo ""
         touch /etc/randy-setup-done
@@ -124,7 +126,6 @@ AUDIO
   mkdir -p /opt/Randy
   tar xzf /tmp/randy.tar.gz --strip 1 -C /opt/Randy
   
-  # For safety, if npm install fails, we still continue to guarantee a working OS build
   cd /opt/Randy && npm install --no-audit --no-fund || true
   chown -R randy:randy /opt/Randy
 
@@ -153,7 +154,6 @@ echo "######>>> PHASE 3: Creating Automated Ramdisk Deployment Hook..."
 mkdir -p overlay/etc/local.d
 mkdir -p overlay/etc/runlevels/default
 
-# This script runs automatically in RAM when the stock USB boots
 cat << 'EOF' > overlay/etc/local.d/randy-deploy.start
 #!/bin/sh
 exec > /dev/tty1 2>&1
@@ -198,7 +198,6 @@ echo "-> Sideloading system payload from RAM disk..."
 mkdir -p /mnt/target
 mount "$PART_ROOT" /mnt/target
 
-# Locate the tarball we embedded onto the media and unpack it straight to the drive
 tar -xzf /randy-rootfs.tar.gz -C /mnt/target
 
 echo "-> Installing System Bootloader (GRUB)..."
@@ -215,7 +214,6 @@ EOF
 chmod +x overlay/etc/local.d/randy-deploy.start
 ln -s /etc/init.d/local overlay/etc/runlevels/default/local
 
-# Package the tiny ramdisk overlay configurations
 cd overlay && tar -czf ../localhost.apkovl.tar.gz * && cd ..
 rm -rf overlay
 
