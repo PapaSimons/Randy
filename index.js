@@ -17,7 +17,8 @@ var createPlayer = require('./lib/mpv-wrapper');
 var metaget = require("metaget");
 var cp = require('child_process');
 var fs = require("fs");
-var drivelist = require('drivelist');
+//var drivelist = require('drivelist');
+const nodeDiskInfo = require('node-disk-info');
 const os = require('node:os'); 
 
 //vars
@@ -115,6 +116,8 @@ app.post('/getSettings', async function (req, res) {
     //return
     console.log("getting settings");
     var cursettings = playlist.getSettings();
+    const devices = await getAllDevices();
+    /*
     var drives = await drivelist.list();
     var devices = [];
     drives.forEach((drive) => {
@@ -129,7 +132,7 @@ app.post('/getSettings', async function (req, res) {
                 devices.push(device);
             });
         }
-    });
+    });*/
     console.log(devices);
     console.log(audiodevicelist);
     var audiodevices = [];
@@ -564,4 +567,82 @@ async function playsong(songobj){
     } else {
         console.log("bad songobj + " + JSON.stringify(songobj));
     }
+}
+
+async function getAllDevices() {
+   var devices = [];
+
+    try {
+        const disks = await nodeDiskInfo.getDiskInfo();
+        const platform = process.platform;
+
+        disks.forEach((disk) => {
+            if (!disk.mounted) return;
+
+            let isUSB = false;
+            const mountedPath = disk.mounted;
+            const mountedLower = mountedPath.toLowerCase();
+            const filesystem = (disk.filesystem || "").toLowerCase();
+
+            // ==========================================
+            // 1. MAC-SPECIFIC FILTERING (STRICT CLEANUP)
+            // ==========================================
+            if (platform === 'darwin') {
+                // Ignore hidden firmware, VM space, preboots, recoveries and Docker/Nix mounts
+                if (
+                    mountedLower.startsWith('/system/volumes/') || 
+                    mountedLower.startsWith('/private/') ||
+                    mountedLower === '/dev' ||
+                    mountedLower === '/nix' ||
+                    filesystem.includes('devfs') ||
+                    disk.blocks === 0
+                ) {
+                    return; // Skip background system clutter completely
+                }
+
+                // If it's in /Volumes, it's a real user-mounted drive (USB, external HDD)
+                if (mountedLower.startsWith('/volumes/')) {
+                    isUSB = true;
+                }
+                // If it's exactly "/", it's your primary Macintosh HD internal drive
+            } 
+
+            // ==========================================
+            // 2. WINDOWS & LINUX CROSS-PLATFORM LOGIC
+            // ==========================================
+            else if (platform === 'win32') {
+                if (filesystem.includes('removable')) {
+                    isUSB = true;
+                }
+            } 
+            else if (platform === 'linux') {
+                // Ignore Linux loopbacks and system frames
+                if (mountedLower.startsWith('/sys') || mountedLower.startsWith('/proc') || mountedLower.startsWith('/dev')) {
+                    return;
+                }
+                if (mountedLower.startsWith('/media/') || mountedLower.startsWith('/mnt/')) {
+                    isUSB = true;
+                }
+            }
+
+            // ==========================================
+            // 3. MAP THE CLEAN DRIVE OBJECT
+            // ==========================================
+            var device = {
+                "name": platform === 'darwin' && mountedPath === '/' 
+                        ? "Macintosh HD (Internal)" 
+                        : `${disk.filesystem.toUpperCase()} (${mountedPath})`, 
+                "size": disk.blocks, 
+                "path": mountedPath, 
+                "isUSB": isUSB
+            };
+
+            devices.push(device);
+        });
+
+    } catch (e) {
+        console.error("Failed to read device disk information:", e);
+    }
+
+    return devices;
 }
