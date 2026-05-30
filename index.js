@@ -117,22 +117,6 @@ app.post('/getSettings', async function (req, res) {
     console.log("getting settings");
     var cursettings = playlist.getSettings();
     const devices = await getAllDevices();
-    /*
-    var drives = await drivelist.list();
-    var devices = [];
-    drives.forEach((drive) => {
-        if (drive.mountpoints.length > 0 && drive.isUSB){
-            console.log(drive);
-            drive.mountpoints.forEach((mountpoint) => {
-                var device = {
-                    "name":mountpoint.label + " - " + drive.description, 
-                    "size":drive.size, 
-                    "path":mountpoint.path
-                };
-                devices.push(device);
-            });
-        }
-    });*/
     console.log(devices);
     console.log(audiodevicelist);
     var audiodevices = [];
