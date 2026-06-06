@@ -601,9 +601,20 @@ async function getAllDevices() {
             } 
             else if (platform === 'linux') {
                 // Ignore Linux loopbacks and system frames
-                if (mountedLower.startsWith('/sys') || mountedLower.startsWith('/proc') || mountedLower.startsWith('/dev')) {
-                    return;
+                if (
+                    mountedLower.startsWith('/run') ||
+                    mountedLower.startsWith('/sys') ||
+                    mountedLower.startsWith('/proc') ||
+                    mountedLower.startsWith('/dev') ||
+                    mountedLower.startsWith('/boot') ||
+                    mountedLower === '/tmp' ||
+                    filesystem.includes('tmpfs') ||
+                    filesystem.includes('devtmpfs') ||
+                    disk.blocks === 0
+                ) {
+                    return; // Skip system noise completely
                 }
+
                 if (mountedLower.startsWith('/media/') || mountedLower.startsWith('/mnt/')) {
                     isUSB = true;
                 }
