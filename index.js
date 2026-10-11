@@ -13,7 +13,7 @@ var http = require('http').Server(app);
 var io = require('socket.io')(http);
 var bodyParser = require('body-parser');
 var playlist = require('./lib/playlist_utils.js');
-var createPlayer = require('./lib/mpv-wrapper');
+var createPlayer = require('./lib/player');
 var metaget = require("metaget");
 var cp = require('child_process');
 var fs = require("fs");
@@ -25,9 +25,8 @@ const os = require('node:os');
 var player = null;
 var psocket = null;
 var port = process.env.PORT || process.argv[2] || 80;
-var isloaded = false;
-var sockettimeout = null;
-var seekable = true;
+var selectedPlayer = null;
+var playbackId = 0;
 var audiodevicelist = {};
 
 //express parsing support
@@ -226,12 +225,11 @@ io.on('connection', function(socket){
     
     socket.on('seek', function(msg){
       console.log('seek - ' + msg);
-      player.seek(msg, 'absolute');
+      player.seek(msg);
     });
 
     socket.on('volume', async function(msg){
       console.log('volume - ' + msg);
-      //player.setProperty('volume', parseInt(msg));
       setVolume(parseInt(msg));
       playlist.setVolume(parseInt(msg));
       io.sockets.emit('volume', msg);
@@ -280,8 +278,6 @@ console.log("Running on - " + os.platform());
 ////--- init the player ---////
 
 function initRandy(){
-    //kill previous mpv instances
-    killmpv();
     //check music folder
     if (!checkmf()){
         console.log("No music folder found");
@@ -317,9 +313,9 @@ function initRandy(){
 
 initRandy();   
 
-//kill mpv when nodejs exits
-process.on('SIGINT', function() {
-    killmpv();
+//close the playback backend when nodejs exits
+process.on('SIGINT', async function() {
+    if (selectedPlayer) await selectedPlayer.close();
     process.exit(0);
 });
 
@@ -343,140 +339,92 @@ function emitproblem(){
 }
 
 async function setVolume(vol) {
-    player.setProperty("volume", vol); 
+    await player.setVolume(vol);
 }
 
 function createNewPlayer(){
-    //create player instance
-    var mpvargs = ['--no-config', 
-                    '--af-clr',
-                    '--vf-clr',
-                    '--vid=no',
-                    '--no-video', 
-                    'script-opts=ytdl_hook-ytdl_path=yt-dlp',
-                    '--audio-display=no',
-                    '--no-initial-audio-sync',
-                    '--audio-format=float',
-                    '--audio-fallback-to-null=yes',
-                    //'--af=lavfi=[dynaudnorm=f=75:g=15]',
-                    '--audio-device=' + playlist.getSettings().audioOutputDevice,
-                    //'--replaygain=' + playlist.getSettings().replayGain,
-                    '--replaygain=no',
-                    '--ytdl-format=bestaudio']; 
-    if (os.platform() == 'linux'){
-        mpvargs.push('--alsa-resample=yes');
-        mpvargs.push('--ao=alsa');
-        mpvargs.push('--volume=100');
-        mpvargs.push('--volume-max=100');
-    }
-    createPlayer({ args:mpvargs }, (err, newplayer) => {
-        if (err) {
-            console.error("Error creating player - " + err);
-        } else {
-            console.log("New mpv player started on Idle");
-            player = newplayer;
-            //set initial saved volume
-            //player.setProperty('volume', playlist.getVolume());
-            setVolume(playlist.getVolume());
-            //load the current song
-            if (playlist.getPlayList().length > 0){
-                var playonstart = playlist.getSettings().playonstart;
-                console.log("playonstart - " + playonstart);
-                if (playonstart == "true" || playonstart == null){
-                    console.log("Playing on start");
-                    playsong(playlist.getCurrentSong());
-                }
-            }
-            //listen to events
-            player.observeProperty('audio-pts', function(t){
-                io.sockets.emit('pos', t);
-            });
-            player.observeProperty('seekable', function(t){ 
-                //console.log('seekable: ' + t);
-                seekable = t;
-            });
-            player.observeProperty('duration', function(t){
-                if (seekable){
-                    io.sockets.emit('duration', t);
-                }
-            });
-            player.observeProperty('volume', function(t){
-                io.sockets.emit('volume', t);
-            });
-            player.observeProperty('audio-bitrate', function(t){
-                if (t && t != null){
-                    player.getProperty('audio-out-params').then(ap => {
-                        if (ap && ap != null){
-                            player.getProperty('file-format').then(ff => {
-                                if (ff && ff != null){
-                                    var friendlystats = ff.toUpperCase().split(',')[0] + ',  ' + (ap.samplerate/1000).toFixed(1) + 'khz,  ' + ap["channel-count"] + 'ch,  ' + Math.round(t/1000) + 'kbs';
-                                    //console.log('---> friendly output: ' + friendlystats);
-                                    io.sockets.emit('audiostats', friendlystats);
-                                }
-                            }).catch(function(err){
-                                console.log("error getting invoked file-format - " + err); 
-                            });
-                        }
-                    }).catch(function(err){
-                        console.log("error getting invoked audio-params - " + err); 
-                    });
-                }
-            }); 
-            player.observeProperty('media-title', function(t){
-                isloaded = true;
-                if (t && t != null){
-                    var curs = playlist.getCurrentSong();
-                    console.log('Title changed: ' + t);
-                    io.sockets.emit('nowplaying', {title:curs.tags.common.title, albumart:curs.albumart});
-                }
-            });
-            player.observeProperty('metadata', function(t){
-                if (t && t !== null){
-                    if (t.hasOwnProperty("icy-title")){
-                        console.log('Title changed: ' + t["icy-title"]);
+    var newplayer = createPlayer({ audioOutputDevice: playlist.getSettings().audioOutputDevice });
+    selectedPlayer = newplayer;
+    newplayer.on('status', function(status){
+        if (selectedPlayer !== newplayer) return;
+        if (status.playbackId !== null && status.playbackId !== playbackId) return;
+        // Keep the existing Socket.IO payloads and MPV metadata presentation.
+        status.changed.forEach(function(field){
+            switch (field){
+                case 'position':
+                    io.sockets.emit('pos', status.position);
+                    break;
+                case 'duration':
+                    if (status.seekable) io.sockets.emit('duration', status.duration);
+                    break;
+                case 'volume':
+                    io.sockets.emit('volume', status.volume);
+                    break;
+                case 'audioStats':
+                    io.sockets.emit('audiostats', status.mpv.audioStats);
+                    break;
+                case 'mediaTitle':
+                    if (status.mpv.mediaTitle){
+                        var curs = playlist.getCurrentSong();
+                        console.log('Title changed: ' + status.mpv.mediaTitle);
+                        io.sockets.emit('nowplaying', {title:curs.tags.common.title, albumart:curs.albumart});
+                    }
+                    break;
+                case 'metadata':
+                    var t = status.mpv.metadata;
+                    if (t && t.hasOwnProperty('icy-title')){
+                        console.log('Title changed: ' + t['icy-title']);
                         var curs = playlist.getCurrentSong();
                         var al = curs.tags.common.artist;
                         var tt = curs.tags.common.title;
-                        if (t["icy-title"] != ""){
-                            tt = t["icy-title"];
-                        }
+                        if (t['icy-title'] != '') tt = t['icy-title'];
                         if (al == tt){
-                            al = "Radio stream";
-                        } else if (t.hasOwnProperty("icy-name")){
-                            al = t["icy-name"];
-                        } else if (al == "") {
-                            al = "Radio stream";
+                            al = 'Radio stream';
+                        } else if (t.hasOwnProperty('icy-name')){
+                            al = t['icy-name'];
+                        } else if (al == ''){
+                            al = 'Radio stream';
                         }
-                        io.sockets.emit('nowplaying', {title:tt, album:al , albumart:curs.albumart});
+                        io.sockets.emit('nowplaying', {title:tt, album:al, albumart:curs.albumart});
                     }
-                }
-            });
-            player.observeProperty('audio-device-list', function(t){
-                console.log('audio-device-list: ' + JSON.stringify(t));
-                audiodevicelist = t;
-            });
-            
-            player.observeProperty('ao', t => console.log('----- ao --- : ' + t));
-            
-            //when mpv is idle
-            //testing alternative to end of file with idle
-            player.onIdle(() => {
-                console.log('idle - loading next song');
-                playsong(playlist.nextsong());
-            });
-
-            player.getProperty('volume').then(function(vol){
-                console.log('-- Volume is: ' + vol);
-            });
-            
-            /*
-            //finished playing a file
-            player.onEndFile(() => {
-                ////doesnt work very well
-            });
-            */
-        }	
-    });  
+                    break;
+                case 'audioDevices':
+                    console.log('audio-device-list: ' + JSON.stringify(status.mpv.audioDevices));
+                    audiodevicelist = status.mpv.audioDevices;
+                    break;
+                case 'audioOutput':
+                    console.log('----- ao --- : ' + status.mpv.audioOutput);
+                    break;
+            }
+        });
+    });
+    newplayer.on('ended', function(event){
+        if (selectedPlayer !== newplayer || event.playbackId !== playbackId) return;
+        console.log('idle - loading next song');
+        playsong(playlist.nextsong());
+    });
+    newplayer.on('playback-error', function(event){
+        if (selectedPlayer !== newplayer) return;
+        if (event.playbackId !== null && event.playbackId !== playbackId) return;
+        console.log('Player error: ' + event.error);
+        if (event.restart) restartplayer();
+    });
+    newplayer.connect().then(function(){
+        if (selectedPlayer !== newplayer) return;
+        console.log('New mpv player started on Idle');
+        player = newplayer;
+        setVolume(playlist.getVolume());
+        if (playlist.getPlayList().length > 0){
+            var playonstart = playlist.getSettings().playonstart;
+            console.log('playonstart - ' + playonstart);
+            if (playonstart == 'true' || playonstart == null){
+                console.log('Playing on start');
+                playsong(playlist.getCurrentSong());
+            }
+        }
+    }).catch(function(err){
+        if (selectedPlayer === newplayer) console.error('Error creating player - ' + err);
+    });
 }
 
 // powers off linux (rpi) //
@@ -484,14 +432,10 @@ function poweroff(){
     cp.spawnSync('poweroff');
 }
 
-// kills any mpv processes (linux/mac) //
-function killmpv(){
-    cp.spawnSync('killall',['mpv']);
-}
-
 function restartplayer(){
-    console.log("restarting mpv");
-    killmpv();
+    console.log('restarting mpv');
+    if (selectedPlayer) selectedPlayer.close();
+    player = null;
     createNewPlayer();
 }
 
@@ -521,35 +465,22 @@ function timeout(ms) {
 
 async function playsong(songobj){
     if (songobj && songobj !== null){
-        //check if mpv is alive
+        var currentPlayer = player;
+        var currentPlaybackId = ++playbackId;
         try {
-            console.log("Loading: " + songobj.songfile);
+            console.log('Loading: ' + songobj.songfile);
             if (songobj.hasOwnProperty('songfile')){
-                //load the file
-                isloaded = false;
-                //test for socket timeout
-                clearTimeout(sockettimeout);
-                sockettimeout = setTimeout(function() {
-                  if (!isloaded){
-                      console.log("Player socket timed out");
-                      restartplayer();
-                  }
-                }, 3000);
-                await player.loadfile(songobj.songfile, 'replace').then(
-                    function (rtn) { isloaded = true; }, 
-                    function (err) { console.log('loading file error: ' + err); }
-                );
-                //unpause
-                await player.play();
-                //update all players
+                await currentPlayer.loadAndPlay(songobj, { playbackId: currentPlaybackId });
+                if (player !== currentPlayer || playbackId !== currentPlaybackId) return;
                 io.sockets.emit('playlist', {playlist:playlist.getPlayList(), playing:playlist.getPlaying()});
             }
         } catch(error) {
-            console.log("Player is unresponsive, restarting mpv - error: " + error);
+            if (player !== currentPlayer || playbackId !== currentPlaybackId) return;
+            console.log('Player is unresponsive, restarting mpv - error: ' + error);
             restartplayer();
-        }   
+        }
     } else {
-        console.log("bad songobj + " + JSON.stringify(songobj));
+        console.log('bad songobj + ' + JSON.stringify(songobj));
     }
 }
 
