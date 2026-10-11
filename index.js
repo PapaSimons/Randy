@@ -56,7 +56,7 @@ app.post('/getStickyList', function (req, res) {
     res.header("Access-Control-Allow-Origin", "http://localhost");
     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
     //return
-    res.json({"results":playlist.getStickyList(req.body.limit)});
+    res.json({"results":playlist.getStickyList(req.body && req.body.limit)});
 });
 
 app.post('/getAlbums', function (req, res) {

@@ -26,6 +26,7 @@ async function server(env = {}) {
         getPlayList: () => songs,
         getPlaying: () => playlist.index,
         getCurrentSong: () => songs[playlist.index],
+        getStickyList: limit => { playlist.stickyLimit = limit; return []; },
         getVolume: () => 63,
         setVolume: value => { playlist.volume = value; },
         initPlaylist: () => Promise.resolve(songs[0]),
@@ -200,4 +201,15 @@ test('LMS load failure does not restart backend or advance queue', async () => {
     players[0].loadAndPlay = async () => { throw new Error('LMS unavailable'); };
     socket.emit('playsong', 0); await flush();
     assert.equal(players.length, 1); assert.equal(playlist.nextCalls, 0);
+});
+
+test('sticky-list API accepts the unchanged frontend empty-body request', async () => {
+    const { routes, playlist } = await server();
+    let result;
+    const response = { header: () => {}, json: value => { result = value; } };
+    routes.get('/getStickyList')({}, response);
+    assert.equal(playlist.stickyLimit, undefined);
+    assert.equal(result.results.length, 0);
+    routes.get('/getStickyList')({ body: { limit: 5 } }, response);
+    assert.equal(playlist.stickyLimit, 5);
 });

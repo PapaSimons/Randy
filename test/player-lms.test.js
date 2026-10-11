@@ -225,3 +225,21 @@ test('close suppresses late responses and completion', async t => {
     reply({ ok: true, json: async () => ({ result: { ...f.raw, mode: 'play' } }) }); await pending;
     assert.equal((await f.player.getStatus()).connected, false); assert.equal(f.ended.length, 0);
 });
+
+test('slow file load/start acknowledgements use a longer deadline than status polling', async t => {
+    const f = fixture(t); f.player.timeout = 5;
+    f.handler(async command => {
+        if (command[0] === 'play' || command[1] === 'play') {
+            await new Promise(resolve => setTimeout(resolve, 20));
+        }
+        return { ok: true, json: async () => ({ result: command[0] === 'status' ? { ...f.raw, mode: 'play' } : {} }) };
+    });
+    // Check the actual AbortSignal too: a mocked fetch must honor aborts to catch regressions.
+    const originalFetch = f.player.fetch;
+    f.player.fetch = (url, options) => Promise.race([
+        originalFetch(url, options),
+        new Promise((resolve, reject) => options.signal.addEventListener('abort', () => reject(new Error('aborted'))))
+    ]);
+    await f.load();
+    assert.equal(f.errors.length, 0); assert.equal((await f.player.getStatus()).state, 'playing');
+});
