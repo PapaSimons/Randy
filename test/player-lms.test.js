@@ -24,7 +24,7 @@ function fixture(t) {
             if (command[0] === 'time') raw.time = command[1];
             if (command[0] === 'mixer') raw['mixer volume'] = command[2];
             if (command[0] === 'playlist' && command[1] === 'play') {
-                raw.playlist_loop = [{ url: 'file://' + command[2] }]; raw.time = '0';
+                raw.playlist_loop = [{ url: /^https?:/.test(command[2]) ? command[2] : 'file://' + command[2] }]; raw.time = '0';
             }
             return { ok: true, json: async () => ({ result: command[0] === 'status' ? { ...raw } : {} }) };
         }
@@ -57,7 +57,7 @@ test('load sends exactly one local file, disables repeat/shuffle and ensures pla
     const f = fixture(t); await f.player.connect(); await f.load();
     assert.deepEqual(f.calls.filter(command => command[0] !== 'status'), [
         ['playlist', 'shuffle', '0'], ['playlist', 'repeat', '0'], ['playlist', 'play', '/music/A.wav'], ['play']]);
-    await assert.rejects(f.load(2, 'https://example.org/audio'), /absolute local/);
+    await assert.rejects(f.load(2, 'ftp://example.org/audio'), /absolute local/);
 });
 
 for (const [method, args, command, field, expected] of [
@@ -242,4 +242,126 @@ test('slow file load/start acknowledgements use a longer deadline than status po
     ]);
     await f.load();
     assert.equal(f.errors.length, 0); assert.equal((await f.player.getStatus()).state, 'playing');
+});
+
+for (const url of ['http://radio.example/live.mp3', 'https://radio.example/live.aac']) {
+    test('direct radio URL is the only LMS queue item: ' + url, async t => {
+        const f = fixture(t); await f.load(1, url);
+        assert.deepEqual(f.calls.filter(c => c[0] !== 'status'), [
+            ['playlist', 'shuffle', '0'], ['playlist', 'repeat', '0'], ['playlist', 'play', url], ['play']]);
+        assert.equal((await f.player.getStatus()).duration, null);
+        assert.equal((await f.player.getStatus()).seekable, false);
+    });
+}
+
+test('radio forwards native live title/station name, clears absent metadata and does not synthesize titles', async t => {
+    const f = fixture(t); await f.load(1, 'https://radio.example/live');
+    f.raw.current_title = 'Artist - Track'; f.raw.playlist_loop[0].remote_title = 'Native station';
+    f.raw.time = '2.5'; await f.player._poll();
+    assert.deepEqual((await f.player.getStatus()).radioMetadata, { title: 'Artist - Track', stationName: 'Native station' });
+    assert.equal((await f.player.getStatus()).position, 2.5);
+    const events = []; f.player.on('status', s => events.push(s));
+    await f.player._poll(); assert.equal(events.length, 0);
+    f.raw.current_title = 'Native station'; await f.player._poll();
+    assert.equal((await f.player.getStatus()).radioMetadata.title, '');
+    f.raw.current_title = 'https://radio.example/live'; await f.player._poll();
+    assert.equal((await f.player.getStatus()).radioMetadata.title, '');
+    f.raw.playlist_loop[0].remote_title = 'https://radio.example/live'; await f.player._poll();
+    assert.equal((await f.player.getStatus()).radioMetadata.stationName, '');
+    delete f.raw.current_title; delete f.raw.playlist_loop[0].remote_title; await f.player._poll();
+    assert.deepEqual((await f.player.getStatus()).radioMetadata, { title: '', stationName: '' });
+    await f.load(2); assert.equal((await f.player.getStatus()).radioMetadata, null);
+});
+
+test('healthy live stream and programme duration/title changes never emit EOF', async t => {
+    const f = fixture(t); await f.load(1, 'https://radio.example/live');
+    f.raw.time = '9.99'; await f.player._poll();
+    f.raw.time = '0'; f.raw.duration = '0.01'; f.raw.current_title = 'Next programme'; await f.player._poll();
+    f.player.current.startAt = 0; await f.player._poll();
+    assert.equal(f.ended.length, 0); assert.equal(f.errors.length, 0);
+    f.raw.mode = 'stop'; await f.player._poll();
+    assert.equal(f.ended.length, 0); // External stop is not a reliable live EOF signal.
+});
+
+test('buffering/initial idle are tolerated; failed stream startup reports and advances once without disconnecting', async t => {
+    const f = fixture(t); await f.load(1, 'https://radio.example/dead');
+    f.raw.mode = 'stop'; await f.player._poll(); assert.equal(f.errors.length, 0);
+    f.raw.mode = 'play'; f.raw.waitingToPlay = '1'; f.raw.time = '2';
+    await f.player._poll(); assert.equal(f.player.current.started, false);
+    f.player.current.startAt = 0; await f.player._poll(); await f.player._poll();
+    assert.match(f.errors[0].error.message, /stream did not start.*https:\/\/radio.example\/dead/);
+    assert.deepEqual(f.ended, [{ playbackId: 1, reason: 'error' }]);
+    assert.equal((await f.player.getStatus()).connected, true);
+});
+
+test('pause during startup and manual stop cannot produce a delayed stream failure/EOF', async t => {
+    const f = fixture(t); await f.load(1, 'https://radio.example/live');
+    await f.player.pause(); f.player.current.startAt = 0; await f.player._poll();
+    assert.equal(f.errors.length, 0); assert.equal(f.ended.length, 0);
+    await f.player.play(); assert.equal(f.player.current.paused, false);
+    await f.player.stop(); f.player.current.startAt = 0; await f.player._poll();
+    assert.equal(f.errors.length, 0); assert.equal(f.ended.length, 0);
+});
+
+test('radio replacement rejects old station metadata/status and delayed failure', async t => {
+    const f = fixture(t); await f.load(1, 'https://radio.example/old');
+    let reply; f.handler(() => new Promise(resolve => { reply = resolve; }));
+    const pending = f.player._poll(); f.handler(null);
+    await f.load(2, 'https://radio.example/new');
+    f.player.current.startAt = 0;
+    const old = { ...f.raw, mode: 'stop', current_title: 'Old artist - Old title',
+        playlist_loop: [{ url: 'https://radio.example/old', remote_title: 'Old station' }] };
+    reply({ ok: true, json: async () => ({ result: old }) }); await pending;
+    f.raw.playlist_loop = old.playlist_loop; await f.player._poll();
+    assert.equal(f.errors.length, 0); assert.equal(f.ended.length, 0);
+    assert.equal((await f.player.getStatus()).radioMetadata.title, '');
+    assert.equal((await f.player.getStatus()).playbackId, 2);
+});
+
+test('radio startup failure can recover with a replacement and ignores outage time', async t => {
+    const f = fixture(t); await f.load(1, 'https://radio.example/live');
+    f.player.current.startAt = 0;
+    f.handler(async () => { throw new Error('network down'); }); await f.player._poll();
+    assert.equal(f.ended.length, 0);
+    f.handler(null); await f.player._poll(); assert.equal(f.ended.length, 0);
+    f.player.current.startAt = 0; await f.player._poll(); assert.equal(f.ended.length, 1);
+    await f.load(2, 'https://radio.example/recovered'); f.raw.time = '1'; await f.player._poll();
+    assert.equal((await f.player.getStatus()).state, 'playing');
+    assert.equal((await f.player.getStatus()).playbackId, 2);
+    assert.equal(f.ended.length, 1);
+});
+
+test('stream error listener replacement cannot trigger completion for the newer selection', async t => {
+    const f = fixture(t); await f.load(1, 'https://radio.example/dead');
+    let replacement;
+    f.player.on('playback-error', () => { replacement = f.load(2, 'https://radio.example/good'); });
+    f.player.current.startAt = 0; await f.player._poll(); await replacement;
+    assert.equal(f.ended.length, 0); assert.equal((await f.player.getStatus()).playbackId, 2);
+});
+
+test('native LMS pause while radio is buffering suspends the startup deadline', async t => {
+    const f = fixture(t); await f.load(1, 'https://radio.example/live');
+    f.player.current.startAt = 0; f.raw.mode = 'pause'; await f.player._poll();
+    assert.equal(f.errors.length, 0); assert.equal(f.ended.length, 0);
+    f.raw.mode = 'play'; await f.player._poll(); assert.equal(f.ended.length, 0);
+});
+
+test('play cannot re-emit a stream failure completion for the same playbackId', async t => {
+    const f = fixture(t); await f.load(1, 'https://radio.example/dead');
+    f.player.current.startAt = 0; await f.player._poll();
+    await f.player.play(); f.player.current.startAt = 0; await f.player._poll();
+    assert.equal(f.ended.length, 1); assert.equal(f.errors.length, 1);
+    await f.load(2, 'https://radio.example/good'); f.raw.time = '1'; await f.player._poll();
+    assert.equal((await f.player.getStatus()).position, 1);
+});
+
+for (const alreadyPlaying of [false, true]) test('volume survives ' + (alreadyPlaying ? 'track replacement' : 'initial load'), async t => {
+    const f = fixture(t); if (alreadyPlaying) await f.load();
+    const volume = f.player.setVolume(35);
+    const loading = f.load(2, '/music/B.wav');
+    await Promise.all([volume, loading]);
+    assert.ok(f.calls.some(c => c[0] === 'mixer' && c[2] === '35'));
+    assert.equal((await f.player.getStatus()).volume, 35);
+    assert.equal((await f.player.getStatus()).playbackId, 2);
+    assert.equal(f.errors.length, 0); assert.equal(f.ended.length, 0);
 });

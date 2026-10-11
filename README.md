@@ -11,17 +11,29 @@ LMS_PLAYER_ID=02:52:41:4e:44:59 PORT=3000 npm start
 ```
 
 `RANDY_PLAYER_BACKEND=mpv` explicitly selects MPV. `LMS_SERVER_URL` defaults to
-`http://127.0.0.1:9000`; `LMS_PLAYER_ID` is required for LMS. This initial LMS
-backend supports absolute local file paths accessible to the LMS host only.
+`http://127.0.0.1:9000`; `LMS_PLAYER_ID` is required for LMS. The LMS backend
+supports absolute local file paths accessible to the LMS host and direct
+HTTP(S) internet radio streams. Other online sources are not supported yet.
 Randy chooses each track; LMS shuffle/repeat are disabled. LMS and Squeezelite
 must already be running. Randy does not manage their services or audio devices.
-MPV device settings and MPV-specific stream metadata/audio statistics are not
-available through LMS. Closing the adapter releases polling without stopping
-the external player. Completion requires observed playback near a known duration
+Radio station objects, selection and stickies remain owned by Randy. LMS's
+`current_title` and `remote_title` supply live titles/station names when present;
+otherwise Randy keeps the station title and artwork. Live streams have no
+seekable duration and never trigger file EOF. A stream that fails to start
+within 15 seconds reports a playback error and asks Randy to choose the next
+track once; pause suspends that check, while stop and replacement cancel it.
+An external stop after successful radio playback does not advance the queue. LMS handles
+its native buffering/pause/resume; live pause is not guaranteed to retain the
+same point in the broadcast. Stream failures after startup cannot reliably be
+distinguished from external stops and do not trigger automatic advancement.
+MPV device settings and MPV-specific audio statistics are not available
+through LMS. Closing the adapter releases polling without stopping
+the external player. Local-file completion requires observed playback near a known duration
 followed by stopped status; outages or insufficient observations may leave the
 track selected rather than advance it. An external stop near the end cannot be
-distinguished reliably from EOF. Failed loads are reported without automatic
-skipping or replay. Run adapter/server tests with `node --test test/*.test.js`.
+distinguished reliably from EOF. Failed local loads and JSON-RPC/connection
+errors are reported without automatic skipping or replay. Run adapter/server
+tests with `node --test test/*.test.js`.
 
 Randy is a minimalist music streamer and player for raspberry pi, linux and macos.
 

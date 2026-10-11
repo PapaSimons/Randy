@@ -339,6 +339,13 @@ function emitproblem(){
     io.sockets.emit('problem', {});
 }
 
+function emitLMSNowPlaying(status, song){
+    var metadata = status && status.radioMetadata;
+    var nowplaying = {title:metadata && metadata.title || song.tags.common.title, albumart:song.albumart};
+    if (metadata) nowplaying.album = metadata.stationName || song.tags.common.title;
+    io.sockets.emit('nowplaying', nowplaying);
+}
+
 async function setVolume(vol) {
     await player.setVolume(vol);
 }
@@ -364,6 +371,9 @@ function createNewPlayer(){
                     break;
                 case 'volume':
                     io.sockets.emit('volume', status.volume);
+                    break;
+                case 'radioMetadata':
+                    if (playerBackend === 'lms') emitLMSNowPlaying(status, playlist.getCurrentSong());
                     break;
                 case 'audioStats':
                     io.sockets.emit('audiostats', status.mpv.audioStats);
@@ -412,6 +422,7 @@ function createNewPlayer(){
         if (selectedPlayer !== newplayer) return;
         if (event.playbackId !== null && event.playbackId !== playbackId) return;
         console.log('Player error: ' + event.error);
+        if (playerBackend === 'lms') emitproblem();
         if (event.restart) restartplayer();
     });
     newplayer.connect().then(function(){
@@ -478,7 +489,9 @@ async function playsong(songobj){
                 await currentPlayer.loadAndPlay(songobj, { playbackId: currentPlaybackId });
                 if (player !== currentPlayer || playbackId !== currentPlaybackId) return;
                 if (playerBackend === 'lms') {
-                    io.sockets.emit('nowplaying', {title:songobj.tags.common.title, albumart:songobj.albumart});
+                    var status = await currentPlayer.getStatus();
+                    if (player !== currentPlayer || playbackId !== currentPlaybackId) return;
+                    emitLMSNowPlaying(status, songobj);
                 }
                 io.sockets.emit('playlist', {playlist:playlist.getPlayList(), playing:playlist.getPlaying()});
             }

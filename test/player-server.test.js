@@ -42,6 +42,7 @@ async function server(env = {}) {
             player[name] = (...args) => { player.calls.push([name, ...args]); return Promise.resolve(); };
         }
         player.loadAndPlay = (...args) => { player.calls.push(['loadAndPlay', ...args]); return Promise.resolve(); };
+        player.getStatus = () => Promise.resolve({});
         players.push(player);
         return player;
     }
@@ -212,4 +213,33 @@ test('sticky-list API accepts the unchanged frontend empty-body request', async 
     assert.equal(result.results.length, 0);
     routes.get('/getStickyList')({ body: { limit: 5 } }, response);
     assert.equal(playlist.stickyLimit, 5);
+});
+
+test('LMS radio uses unchanged nowplaying/problem contracts, station art, and rejects stale metadata', async () => {
+    const { socket, context, players, sent, songs } = await server({ RANDY_PLAYER_BACKEND: 'lms' });
+    songs[0].type = 'radio'; songs[0].songfile = 'https://radio.example/live';
+    const radioMetadata = { title: 'Native artist - Native track', stationName: 'Native station' };
+    players[0].getStatus = async () => ({ radioMetadata });
+    socket.emit('playsong', 0); await flush();
+    const initial = sent.filter(e => e.name === 'nowplaying').at(-1).data;
+    assert.equal(initial.title, radioMetadata.title); assert.equal(initial.albumart, '/cover.jpg');
+    assert.equal(initial.album, 'Native station');
+    const status = { playbackId: context.playbackId, radioMetadata, changed: ['radioMetadata'] };
+    const count = sent.length;
+    players[0].emit('status', { ...status, playbackId: context.playbackId - 1 });
+    assert.equal(sent.length, count);
+    players[0].emit('status', { ...status, radioMetadata: { title: '', stationName: '' } });
+    assert.equal(sent.at(-1).data.title, 'A'); assert.equal(sent.at(-1).data.album, 'A');
+    players[0].emit('playback-error', { playbackId: context.playbackId, error: new Error('bad stream'), restart: false });
+    assert.equal(sent.at(-1).name, 'problem');
+});
+
+test('delayed LMS metadata read cannot publish nowplaying after replacement', async () => {
+    const { socket, players, sent } = await server({ RANDY_PLAYER_BACKEND: 'lms' });
+    let finish; players[0].getStatus = () => new Promise(resolve => { finish = resolve; });
+    socket.emit('playsong', 0); await flush();
+    players[0].getStatus = async () => ({});
+    socket.emit('playsong', 1); await flush(); const count = sent.length;
+    finish({ radioMetadata: { title: 'Stale title', stationName: 'Stale station' } }); await flush();
+    assert.equal(sent.length, count);
 });
