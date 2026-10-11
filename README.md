@@ -1,5 +1,28 @@
 Welcome to Randy!
 
+### Playback backend
+
+MPV remains the default (`npm start`). To select an already running LMS server
+and connected Squeezelite player, use Node.js 22 or newer:
+
+```sh
+RANDY_PLAYER_BACKEND=lms LMS_SERVER_URL=http://127.0.0.1:9000 \
+LMS_PLAYER_ID=02:52:41:4e:44:59 PORT=3000 npm start
+```
+
+`RANDY_PLAYER_BACKEND=mpv` explicitly selects MPV. `LMS_SERVER_URL` defaults to
+`http://127.0.0.1:9000`; `LMS_PLAYER_ID` is required for LMS. This initial LMS
+backend supports absolute local file paths accessible to the LMS host only.
+Randy chooses each track; LMS shuffle/repeat are disabled. LMS and Squeezelite
+must already be running. Randy does not manage their services or audio devices.
+MPV device settings and MPV-specific stream metadata/audio statistics are not
+available through LMS. Closing the adapter releases polling without stopping
+the external player. Completion requires observed playback near a known duration
+followed by stopped status; outages or insufficient observations may leave the
+track selected rather than advance it. An external stop near the end cannot be
+distinguished reliably from EOF. Failed loads are reported without automatic
+skipping or replay. Run adapter/server tests with `node --test test/*.test.js`.
+
 Randy is a minimalist music streamer and player for raspberry pi, linux and macos.
 
 

@@ -27,7 +27,8 @@ var psocket = null;
 var port = process.env.PORT || process.argv[2] || 80;
 var selectedPlayer = null;
 var playbackId = 0;
-var audiodevicelist = {};
+var audiodevicelist = [];
+var playerBackend = process.env.RANDY_PLAYER_BACKEND || 'mpv';
 
 //express parsing support
 app.use(bodyParser.json()); // to support JSON-encoded bodies
@@ -343,8 +344,12 @@ async function setVolume(vol) {
 }
 
 function createNewPlayer(){
-    var newplayer = createPlayer({ audioOutputDevice: playlist.getSettings().audioOutputDevice });
+    var newplayer = createPlayer({ backend: playerBackend,
+        audioOutputDevice: playlist.getSettings().audioOutputDevice,
+        serverUrl: process.env.LMS_SERVER_URL, playerId: process.env.LMS_PLAYER_ID });
     selectedPlayer = newplayer;
+    // Keep the LMS instance usable after a temporary connection failure; it polls for recovery.
+    if (playerBackend === 'lms') player = newplayer;
     newplayer.on('status', function(status){
         if (selectedPlayer !== newplayer) return;
         if (status.playbackId !== null && status.playbackId !== playbackId) return;
@@ -411,7 +416,7 @@ function createNewPlayer(){
     });
     newplayer.connect().then(function(){
         if (selectedPlayer !== newplayer) return;
-        console.log('New mpv player started on Idle');
+        console.log('New ' + playerBackend + ' player connected');
         player = newplayer;
         setVolume(playlist.getVolume());
         if (playlist.getPlayList().length > 0){
@@ -433,7 +438,7 @@ function poweroff(){
 }
 
 function restartplayer(){
-    console.log('restarting mpv');
+    console.log('restarting ' + playerBackend);
     if (selectedPlayer) selectedPlayer.close();
     player = null;
     createNewPlayer();
@@ -472,10 +477,17 @@ async function playsong(songobj){
             if (songobj.hasOwnProperty('songfile')){
                 await currentPlayer.loadAndPlay(songobj, { playbackId: currentPlaybackId });
                 if (player !== currentPlayer || playbackId !== currentPlaybackId) return;
+                if (playerBackend === 'lms') {
+                    io.sockets.emit('nowplaying', {title:songobj.tags.common.title, albumart:songobj.albumart});
+                }
                 io.sockets.emit('playlist', {playlist:playlist.getPlayList(), playing:playlist.getPlaying()});
             }
         } catch(error) {
             if (player !== currentPlayer || playbackId !== currentPlaybackId) return;
+            if (playerBackend === 'lms') {
+                console.error('LMS playback failed - ' + error);
+                return;
+            }
             console.log('Player is unresponsive, restarting mpv - error: ' + error);
             restartplayer();
         }

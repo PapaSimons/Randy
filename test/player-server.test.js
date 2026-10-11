@@ -10,7 +10,7 @@ const vm = require('node:vm');
 const flush = () => new Promise(resolve => setImmediate(resolve));
 
 // Execute the actual server wiring without starting HTTP, MPV or persistent databases.
-async function server() {
+async function server(env = {}) {
     const sent = [], players = [], routes = new Map();
     const io = new EventEmitter();
     io.sockets = { emit: (name, data) => sent.push({ name, data }) };
@@ -67,7 +67,7 @@ async function server() {
         },
         __dirname: path.join(__dirname, '..'),
         console: { log: () => {}, error: () => {} },
-        process: { env: {}, argv: [], platform: 'darwin', on: () => {} },
+        process: { env, argv: [], platform: 'darwin', on: () => {} },
         setTimeout, clearTimeout
     });
     vm.runInContext(fs.readFileSync(path.join(__dirname, '../index.js'), 'utf8'), context);
@@ -81,6 +81,7 @@ test('server routes controls through the common interface and keeps Randy select
     const { socket, players, playlist, songs, sent } = await server();
     const player = players[0];
     assert.equal(player.options.audioOutputDevice, 'auto');
+    assert.equal(player.options.backend, 'mpv');
     assert.ok(player.calls.some(call => call[0] === 'setVolume' && call[1] === 63));
     assert.equal(player.calls.filter(call => call[0] === 'loadAndPlay').length, 0);
     socket.emit('play');
@@ -171,4 +172,32 @@ test('server advances the Randy queue for current completion only', async () => 
     assert.equal(context.playbackId, id + 1);
     players[0].emit('ended', { playbackId: id });
     assert.equal(playlist.nextCalls, 1);
+});
+
+test('LMS selection preserves frontend payloads and Randy queue ownership without MPV status', async () => {
+    const { socket, context, players, sent, songs, routes, playlist } = await server({
+        RANDY_PLAYER_BACKEND: 'lms', LMS_SERVER_URL: 'http://localhost:9000', LMS_PLAYER_ID: 'local-player'
+    });
+    assert.equal(players[0].options.backend, 'lms');
+    assert.equal(players[0].options.serverUrl, 'http://localhost:9000');
+    assert.equal(players[0].options.playerId, 'local-player');
+    socket.emit('playsong', 0); await flush();
+    assert.ok(sent.some(event => event.name === 'nowplaying' && event.data.title === songs[0].tags.common.title));
+    players[0].emit('status', { playbackId: context.playbackId, changed: ['position', 'duration', 'volume'],
+        position: 2, duration: 10, seekable: true, volume: 50 });
+    assert.ok(sent.some(event => event.name === 'pos' && event.data === 2));
+    let settings;
+    await routes.get('/getSettings')({}, { header: () => {}, json: value => { settings = value; }, send: value => { settings = value; } });
+    assert.equal(settings.audiodevices.length, 0);
+    players[0].emit('playback-error', { playbackId: context.playbackId, error: new Error('Disconnected'), restart: false });
+    assert.equal(players.length, 1); assert.equal(playlist.nextCalls, 0);
+    players[0].emit('ended', { playbackId: context.playbackId }); await flush();
+    assert.equal(playlist.nextCalls, 1);
+});
+
+test('LMS load failure does not restart backend or advance queue', async () => {
+    const { socket, players, playlist } = await server({ RANDY_PLAYER_BACKEND: 'lms', LMS_PLAYER_ID: 'local' });
+    players[0].loadAndPlay = async () => { throw new Error('LMS unavailable'); };
+    socket.emit('playsong', 0); await flush();
+    assert.equal(players.length, 1); assert.equal(playlist.nextCalls, 0);
 });
