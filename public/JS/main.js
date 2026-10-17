@@ -63,7 +63,7 @@ $('#search-bar').keyup(debounce(async function(event) {
            if (meta.title){
                templist.search = [$('#search-bar').val()];
                console.log(JSON.stringify(meta));
-                var ht = "<div class='browse-search-x' onclick='$(\"#browse-search-url\").hide();'><img src='IMG/Close_MD.svg'/></div>";
+                var ht = "<div class='browse-search-x' onclick='$(\"#browse-search-url\").hide();'>" + randyUI.icon('close','Close') + "</div>";
                 ht += "<div class='browse-search-img'>";
                 ht += "<img src='" + meta.img + "'/>";
                 ht += "</div>";
@@ -93,7 +93,7 @@ $('#search-bar').keyup(debounce(async function(event) {
                 console.log("search results: " + JSON.stringify(res));
                  var ht = "";
                  var hasresults = false;
-                 ht += "<img class='clickable' onclick='browsepane(\"init\");' src='IMG/Arrow_Right_MD.svg'/>";
+                 ht += "<button type='button' class='randy-action' onclick='browsepane(\"init\");' aria-label='Back to home' title='Back to home'>" + randyUI.icon('back') + "</button>";
                  //if no stations try from browser
                  if (res.radiostations.length == 0){
                     res.radiostations = await getRadios(searchQuery);
@@ -448,7 +448,7 @@ function browsepane(mode){
             api.getStickyList().then(function(rtn){
                 var res = rtn.results;     
                 var ht = "";
-                ht += "<img class='clickable' onclick='browsepane(\"init\");' src='IMG/Arrow_Right_MD.svg'/>";
+                ht += "<button type='button' class='randy-action' onclick='browsepane(\"init\");' aria-label='Back to home' title='Back to home'>" + randyUI.icon('back') + "</button>";
                  if (res.length > 0){
                      templist.allstickies = [];
                      ht += "<h3>Sticky</h3>";
@@ -467,7 +467,7 @@ function browsepane(mode){
             api.getAlbums().then(function(rtn){
                 var res = rtn.results;     
                 var ht = "";
-                ht += "<img class='clickable' onclick='browsepane(\"init\");' src='IMG/Arrow_Right_MD.svg'/>";
+                ht += "<button type='button' class='randy-action' onclick='browsepane(\"init\");' aria-label='Back to home' title='Back to home'>" + randyUI.icon('back') + "</button>";
                  if (res.albums.length > 0){
                      templist.allalbums = [];
                      //ht += "<h3>Local albums</h3>";
@@ -493,26 +493,29 @@ function browsepane(mode){
             });
             break;
         case "album":
-            api.getAlbum(templist.curalbum).then(function(rtn){
-                var res = rtn.results;     
-                var ht = "";
-                ht += "<img class='clickable' onclick='browsepane(\""+prevbrowserpanemode+"\");' src='IMG/Arrow_Right_MD.svg'/>";
-                 if (res.files.length > 0){
-                     templist.curalbumfiles = [];
-                     ht += "<div class='search-result'>";
-                     ht += "<h3>" + res.name + "</h3>";
-                     ht += "<div class='search-result-options'>" + songoptions('allalbums',templist.curalbumi) + "</div>";
-                     ht += "</div>";
-                     for (i in res.files){
-                        templist.curalbumfiles.push(res.files[i].path);
-                        ht += "<div class='search-result'>";
-                        ht += "<div class='search-result-name clickablelink' onclick='doSongOption(\"playnow\",\"curalbumfiles\",\""+i+"\")'>" + res.files[i].name + "</div>"; 
-                        ht += "<div class='search-result-options'>" + songoptions('curalbumfiles',i) + "</div>";
-                        ht += "</div>";
-                         
-                     }
-                 }
-                $('#browse-album').html(ht); 
+            var albumPath = templist.curalbum;
+            var albumBack = prevbrowserpanemode;
+            $('#browse-album').empty().text('Loading album…');
+            api.getAlbum(albumPath).then(function(rtn){
+                if (curbrowserpanemode !== 'album' || templist.curalbum !== albumPath) return;
+                var res = rtn.results;
+                var pane = $('#browse-album').empty();
+                pane.append($('<button type="button">').text(albumBack === 'search-results' ? 'Back to search' : 'Back to albums').on('click',function(){browsepane(albumBack);}));
+                pane.append(randyUI.cover(res.albumart).addClass('album-detail-cover'),$('<h3>').text(res.name),
+                    $('<p>').text([res.artist,res.year].filter(Boolean).join(' · ')));
+                templist.curalbumfiles = res.files.map(function(file){return file.path;});
+                function albumAction(action){socket.emit(action,albumPath);if(action==='addtolist')showToast('Adding to the end of the playlist');}
+                if(res.files.length) {
+                    pane.append($('<button type="button">').text('Play album').on('click',function(){albumAction('playnow');}),
+                        $('<button type="button">').text('Add album').on('click',function(){albumAction('addtolist');}));
+                }
+                res.files.forEach(function(file,index){
+                    pane.append(randyUI.row({source:'local',title:file.title || file.name,artist:file.artist,album:file.albumName,artwork:file.albumart},{
+                        play:function(){doSongOption('playnow','curalbumfiles',index);},
+                        add:function(){doSongOption('addtolist','curalbumfiles',index);},
+                        sticky:function(){doSongOption('stick','curalbumfiles',index);}
+                    }));
+                });
             });
             break;
         case "init":
@@ -552,9 +555,9 @@ function browsepane(mode){
                         ht += "<div class='device'><div class='device-main'>" + res.devices[i].name + "<br/>" + formatBytes(res.devices[i].size,2) + "</div>";
                         if (res.devices[i].path == res.cursettings.musicfolders){
                            founddev = true;
-                           ht += "<div class='setit' onclick='changemfd("+i+");'><img src='/IMG/Check_16.svg')/></div><div class='spinner'><img src='IMG/Spin.svg'/></div>";
+                           ht += "<div class='setit' onclick='changemfd("+i+");'>" + randyUI.icon('check','Selected') + "</div><div class='spinner'>" + randyUI.icon('spinner') + "</div>";
                         } else {
-                           ht += "<div class='setit' onclick='changemfd("+i+");'>Set</div><div class='spinner'><img src='IMG/Spin.svg'/></div>";
+                           ht += "<div class='setit' onclick='changemfd("+i+");'>Set</div><div class='spinner'>" + randyUI.icon('spinner') + "</div>";
                         }
                         ht += "</div>";
                      }
@@ -564,10 +567,10 @@ function browsepane(mode){
                  console.log('templist.connectedDevices - ' + templist.connectedDevices);
                  if (!founddev && res.cursettings.musicfolders !== null){
                     ht += " value='" + res.cursettings.musicfolders[0] + "'/></div>";
-                    ht += "<div class='setit' onclick='changemf();'><img src='/IMG/Check_16.svg')/></div><div class='spinner'><img src='IMG/Spin.svg'/></div>";
+                    ht += "<div class='setit' onclick='changemf();'>" + randyUI.icon('check','Selected') + "</div><div class='spinner'>" + randyUI.icon('spinner') + "</div>";
                  } else {
                     ht += "/></div>";
-                    ht += "<div class='setit' onclick='changemf();'>Set</div><div class='spinner'><img src='IMG/Spin.svg'/></div>";
+                    ht += "<div class='setit' onclick='changemf();'>Set</div><div class='spinner'>" + randyUI.icon('spinner') + "</div>";
                  }
                  ht += "</div>";
                  //audio devices
@@ -612,7 +615,7 @@ function browsepane(mode){
                     cardsobj.forEach((card) => {
                         var setit = 'Set';
                         if (card.plugins.find(e => e.name == res.cursettings.audioOutputDevice)){
-                            setit = "<img src='/IMG/Check_16.svg')/>";
+                            setit = "" + randyUI.icon('check','Selected') + "";
                         }
                         var whichvar = card.card;
                         var selectplugin = "";
@@ -632,7 +635,7 @@ function browsepane(mode){
                         ht += "<div class='device-select'>" + selectplugin + "</div>";
                         ht += "<div class='setit' onclick='setSetting(\"audioOutputDevice\", \"" + whichvar + "\",\"Setting audio device\");'>";
                         ht += setit + "</div>";
-                        ht += "<div class='spinner'><img src='IMG/Spin.svg'/></div>";
+                        ht += "<div class='spinner'>" + randyUI.icon('spinner') + "</div>";
                         ht += "</div>";
                         ind++;
                     });
@@ -885,3 +888,7 @@ function Bounce(ele) {
         }
     );
 }
+
+$('[data-randy-icon][role=button]').on('keydown', function(event) {
+    if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); $(this).trigger('click'); }
+});

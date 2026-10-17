@@ -2,12 +2,18 @@
 var randyUI = (function () {
     'use strict';
     var paths = {
+        home:'M3 10l9-7 9 7v11h-6v-7H9v7H3z',
+        folder:'M3 6h7l2 3h9v12H3z',
+        close:'M6 6l12 12M6 18L18 6', search:'M20 20l-5-5M17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0',
+        back:'M15 5l-7 7 7 7', next:'M9 5l7 7-7 7',
+        menu:'M4 6h16M4 12h16M4 18h16', check:'M5 12l4 4L19 6',
+        spinner:'M12 3a9 9 0 1 1-9 9',
         play:'M8 5l11 7-11 7z', add:'M12 5v14M5 12h14',
         sticky:'M6 3h12v18l-6-4-6 4z',
         spotify:'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20M6 9c4-2 8-2 12 0M7 12c3-1.5 7-1.5 10 0M8 15c3-1 5-1 8 0',
         local:'M4 4h16v16H4zM8 8h8M8 12h5',
         external:'M14 3h7v7M21 3l-11 11M10 3H3v18h18v-7',
-        settings:'M4 7h16M4 17h16M9 4v6M15 14v6', remove:'M5 6h14M9 6V3h6v3M7 6l1 15h8l1-15'
+        settings:'M9.5 3h5l.5 2.5 2 1.2 2.4-.8 2.5 4.2-1.9 1.7v2.4l1.9 1.7-2.5 4.2-2.4-.8-2 1.2-.5 2.5h-5L9 20.5l-2-1.2-2.4.8-2.5-4.2L4 14.2v-2.4l-1.9-1.7 2.5-4.2 2.4.8 2-1.2zM15.5 13a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0', remove:'M5 6h14M9 6V3h6v3M7 6l1 15h8l1-15'
     };
     function escape(value) {return String(value || '').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
     function icon(name,label) {return '<svg class="randy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" '+(label?'role="img" aria-label="'+escape(label)+'"':'aria-hidden="true"')+'><path d="'+(paths[name] || paths.local)+'"/></svg>';}
@@ -30,3 +36,10 @@ var randyUI = (function () {
     }
     return {icon:icon,escape:escape,coverUrl:coverUrl,cover:cover,row:row,actionButton:actionButton,sourceIcon:sourceIcon};
 }());
+
+// Render static controls through the same icon definitions as dynamic rows.
+if (typeof document.querySelectorAll === 'function') {
+    document.querySelectorAll('[data-randy-icon]').forEach(function (element) {
+        element.innerHTML = randyUI.icon(element.getAttribute('data-randy-icon'));
+    });
+}

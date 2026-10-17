@@ -34,11 +34,11 @@
               </div>
               <div id="browse-home">
                   <div class="browse-top-menu">  
-                    <span class='browse-top-back-icon clickable'><img src='IMG/Close_MD.svg'></span>
+                    <button type='button' class='browse-top-back-icon clickable randy-icon-button' data-randy-icon='close' aria-label='Close browser' title='Close browser'></button>
                     <div id="search">
                       <input id="search-bar" placeholder="Search weburls or keywords.." type="search" autocomplete="off"/>
-                      <button id="button"><img src='IMG/Search_Magnifying_Glass.svg'/></button>
-                      <div class="spinner"><img src='IMG/Spin.svg'/></div>
+                      <button id="button" data-randy-icon="search" aria-label="Search" title="Search"></button>
+                      <div class="spinner"><span data-randy-icon="spinner" aria-hidden="true"></span></div>
                     </div>
                   </div>
                   <div id="browse-search-url">
@@ -78,12 +78,12 @@
                         </div>
                         <h3>Music Folders</h3>
                         <div id="devices"></div>
-                        <div id="loadingdevices"><div class="spinner"><img src='IMG/Spin.svg'/></div></div> 
+                        <div id="loadingdevices"><div class="spinner"><span data-randy-icon="spinner" aria-hidden="true"></span></div></div>
                         <section id="audio-output-settings" hidden>
                             <h3>Audio Output</h3>
                             <div class="device settings-card audio-output-card">
                                 <div class="device-main" id="audio-output-current">Checking…</div>
-                                <button class="setit" id="audio-output-change" type="button">Change</button>
+                                <button class="setit" id="audio-output-change" type="button" aria-expanded="false" aria-controls="audio-output-options">Change</button>
                                 <div id="audio-output-options" hidden>
                                     <select id="audio-output-select" aria-label="Audio output"></select>
                                     <button id="audio-output-save" type="button">Apply</button>
@@ -119,24 +119,18 @@
                 </div>
                 <div class="browse-bottm-bar">
                   <div class="inner-center">
-                    <img class="browse-top-menu-icon clickable" id="homebutt" onclick="browsepane('init');" src="IMG/House_01.svg"/>
-                    <img class="browse-top-menu-icon clickable" onclick="browsepane('files');" src="IMG/Folder.svg"/>
-                    <img class="browse-top-menu-icon clickable" onclick="browsepane('settings');" src="IMG/Settings.svg"/>
+                    <button type="button" class="browse-top-menu-icon clickable" id="homebutt" onclick="browsepane('init');" data-randy-icon="home" aria-label="Home" title="Home"></button>
+                    <button type="button" class="browse-top-menu-icon clickable" onclick="browsepane('files');" data-randy-icon="folder" aria-label="Music library" title="Music library"></button>
+                    <button type="button" class="browse-top-menu-icon clickable" onclick="browsepane('settings');" data-randy-icon="settings" aria-label="Settings" title="Settings"></button>
                   </div>
                 </div>
               </div>
           </div>
           <div id="playlist-pane">
             <div id="playlist-pane-top">
-                <div id="top-icon-menu" class="clickable">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:20px; height:20px">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 5.25h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5" />
-                  </svg>                  
+                <div id="top-icon-menu" class="clickable" data-randy-icon="menu" role="button" tabindex="0" aria-label="Toggle browser" title="Toggle browser">
                 </div>
-                <div id="top-icon-menu-mobile" class="clickable">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:20px; height:20px">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 5.25h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5m-16.5 4.5h16.5" />
-                  </svg>
+                <div id="top-icon-menu-mobile" class="clickable" data-randy-icon="menu" role="button" tabindex="0" aria-label="Toggle browser" title="Toggle browser">
                 </div>
                 <div id="top-icon-menu-volume">
                   <input type="range" class="slider" value="0" id="volume-slider" onchange="changeVolume(this.value)">
@@ -150,20 +144,14 @@
             <div id="playlist-pane-player">
                 <div id="control-panel" class="control-panel">
                     <div class="controls">
-                        <div class="prev">
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:24px;height:24px;">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
-                          </svg>                          
+                        <div class="prev" data-randy-icon="back" role="button" tabindex="0" aria-label="Previous track" title="Previous track">
                         </div>
                         <div id='seekdial' usemap="hackdial">
                             <input type="text" value="50" class="dial" id="dial" usemap="hackdial">
                         </div>
                         <div id="play" class="album-art" usemap="hackalbum"></div>
                         <!--<div  class="play"></div>-->
-                        <div class="next">
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width:24px;height:24px;">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-                          </svg>                          
+                        <div class="next" data-randy-icon="next" role="button" tabindex="0" aria-label="Next track" title="Next track">
                         </div>
                         
                         <map name="hackalbum">

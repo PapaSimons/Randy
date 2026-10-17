@@ -1,11 +1,11 @@
 #spotify-settings { margin: 25px 0; }
-#browse-spotify > button { cursor: pointer; background: transparent; color: inherit; border: 1px solid #888; border-radius: 4px; padding: 5px 8px; margin: 4px; font: inherit; }
+#browse-spotify > button, #browse-album > button { cursor: pointer; background: transparent; color: inherit; border: 1px solid #888; border-radius: 4px; padding: 4px 6px; margin: 4px 6px 4px 0; font: inherit; }
 #spotify-settings a { color: inherit; }
 .spotify-result { display: flex; align-items: center; gap: 10px; }
 .spotify-cover { width: 44px; height: 44px; object-fit: cover; flex-shrink: 0; border-radius: 3px; }
 .spotify-result .search-result-name { flex: 1; min-width: 0; }
 .spotify-actions { display: flex; flex-wrap: wrap; }
-#browse-spotify > .spotify-cover { width: 120px; height: 120px; display: block; margin-top: 15px; }
+#browse-spotify > .spotify-cover, #browse-album > .album-detail-cover { width: 120px; height: 120px; display: block; margin-top: 15px; }
 .spotify-notice { opacity: .7; }
 .onesong > .spotify-cover { float: left; margin: 8px 10px 0 0; }
 @media (max-width: 600px) { .spotify-actions button { padding: 4px; font-size: 11px; } .spotify-result { gap: 5px; } }
@@ -20,17 +20,19 @@
 .randy-item-title, .randy-item .search-result-path { display:block; }
 .randy-item .search-result-name { min-width:0; font-size:14px; }
 .randy-item .search-result-path { font-size:12px; margin-top:3px; }
-.randy-item-actions { display:flex; align-items:center; flex-shrink:0; gap:3px; }
-.randy-action { display:inline-flex; align-items:center; justify-content:center; border:0; background:transparent; color:inherit; padding:7px; cursor:pointer; text-decoration:none; }
+.randy-item-actions { display:flex; align-items:center; flex-shrink:0; gap:2px; }
+.randy-action { display:inline-flex; align-items:center; justify-content:center; border:0; background:transparent; color:inherit; padding:4px; cursor:pointer; text-decoration:none; }
 .randy-action:hover { background:rgba(0,0,0,.06); border-radius:4px; }
 .onesong > .randy-cover { margin:0 12px 0 0; float:none; }
 .onesong-details { min-width:0; }
 #spotify-connect-toast { position:sticky; top:0; z-index:4; padding:12px 20px; background:#f0f4f0; border-bottom:1px solid #d3ddd3; font-size:13px; overflow-wrap:anywhere; }
 #spotify-connect-toast[hidden], #audio-output-settings[hidden] { display:none; }
 .randy-result-heading { font-size:13px; font-weight:normal; opacity:.65; }
-#audio-output-select { max-width:100%; margin:10px 5px 10px 0; }
+#audio-output-select, #audio-output-save { height:28px; box-sizing:border-box; border:1px solid #aaa; border-radius:4px; font:inherit; vertical-align:middle; }
+#audio-output-save { padding:2px 8px; }
+#audio-output-select { max-width:100%; padding:2px 30px 2px 8px; margin:10px 5px 10px 0; appearance:none; background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23555' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center; }
 #audio-output-message { font-size:12px; opacity:.7; }
-@media (max-width:600px) { .randy-item { gap:6px; } .randy-action { padding:5px; } .randy-item .randy-source { display:none; } }
+@media (max-width:600px) { .randy-item { gap:6px; } .randy-action { padding:4px; } .randy-item .randy-source { display:none; } }
 .settings-card { gap: 12px; }
 .audio-output-card { flex-wrap: wrap; }
 .audio-output-card .device-main { min-width: 0; overflow-wrap: anywhere; }
@@ -43,7 +45,19 @@
 .spotify-status-row { display: flex; justify-content: space-between; gap: 16px; }
 .spotify-status-row > :last-child { text-align: right; }
 .spotify-search-preference { display: flex; align-items: center; gap: 6px; }
-.spotify-search-preference input { margin: 0; }
 .spotify-settings-card a { align-self: flex-start; }
 
 .randy-item .randy-action { border: 0; background: transparent; margin: 0; font: inherit; }
+
+.randy-source { align-items: center; justify-content: center; vertical-align: middle; line-height: 1; }
+.randy-item > span { display: inline-flex; align-items: center; justify-content: center; }
+.randy-item > span .randy-source { margin: 0; }
+
+/* Shared navigation and status icons; artwork remains separate. */
+.randy-icon-button, button.browse-top-menu-icon { border:0; background:transparent; padding:0; color:inherit; cursor:pointer; font:inherit; }
+.browse-top-menu-icon .randy-icon { width:24px; height:24px; }
+.browse-top-back-icon .randy-icon { width:24px; height:24px; }
+#top-icon-menu .randy-icon, #top-icon-menu-mobile .randy-icon { width:20px; height:20px; }
+.controls > .prev .randy-icon, .controls > .next .randy-icon { width:24px; height:24px; }
+.spinner .randy-icon { display:block; width:20px; height:20px; }
+.randy-icon-button:focus-visible, button.browse-top-menu-icon:focus-visible, [data-randy-icon][role=button]:focus-visible { outline:2px solid currentColor; outline-offset:3px; }

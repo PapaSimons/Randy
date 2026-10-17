@@ -42,9 +42,14 @@ var spotifyUI = (function () {
             .catch(message);
     }
     function row(item) {
-        return randyUI.row(Object.assign({},item,{source:'spotify'}),item.song ? {
+        var actions = item.song ? {
             play:function(){action(item,'play');},add:function(){action(item,'add');},sticky:function(){action(item,'sticky');}
-        } : {open:function(){open(item);}});
+        } : {open:function(){open(item);}};
+        if (!item.song && item.kind === 'album') {
+            actions.play=function(){action(item,'play');};
+            actions.add=function(){action(item,'add');};
+        }
+        return randyUI.row(Object.assign({},item,{source:'spotify'}),actions);
     }
     function open(item) {
         var token = ++browseGeneration;
