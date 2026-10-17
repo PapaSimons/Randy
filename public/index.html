@@ -12,6 +12,7 @@
       <script src='JS/jquery-3.3.1.min.js'></script>
       <!-- base CSS -->
       <link rel="stylesheet" href="CSS/basecss.css">
+      <link rel="stylesheet" href="CSS/spotify.css">
       <!-- loading buttons -->
       <link rel="stylesheet" href="CSS/loading-btn.css">
       <link rel="stylesheet" href="CSS/loading.css">
@@ -44,9 +45,8 @@
                       &nbsp;
                   </div>
                   <div id="browse-modes">
-                    <div id="browse-search-results">
-                      &nbsp;
-                    </div>
+                    <div id="browse-search-results"><div id="local-search-results"></div><div id="spotify-search-results"></div></div>
+                    <div id="browse-spotify"></div>
                     <div id="browse-init">
                         <div class="browse-init-sticky">
                           &nbsp;
@@ -79,6 +79,26 @@
                         <h3>Music Folders</h3>
                         <div id="devices"></div>
                         <div id="loadingdevices"><div class="spinner"><img src='IMG/Spin.svg'/></div></div> 
+                        <section id="spotify-settings">
+                            <h3>Spotify</h3>
+                            <div><span id="spotify-status">Connecting</span><span id="spotify-account"></span></div>
+                            <div id="spotify-controls"></div>
+                            <div>Search API <span id="spotify-search-api">Checking…</span></div>
+                            <div>Spotify Connect <span id="spotify-connect-state">Checking…</span></div>
+                            <div>Current ownership <span id="spotify-owner">Randy</span></div>
+                            <p id="spotify-connect-warning" hidden>Spotify Connect is waiting for audio. Switch to another Spotify device, then select Randy again.</p>
+                            <button id="spotify-personal-setup" type="button">Set up personal Spotify search</button>
+                            <div id="spotify-personal-form" hidden>
+                                <p>Create a <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener">Spotify Developer App</a>. Add this exact redirect URI:</p>
+                                <code>https://stiefenm.github.io/spoton/auth/</code>
+                                <p>Copy its Client ID below, save, then reconnect SpotOn. No Client Secret or password is needed. Spotify Development Mode still has limits.</p>
+                                <label>Client ID <input id="spotify-client-id" type="text" maxlength="32" autocomplete="off" spellcheck="false"></label>
+                                <button id="spotify-client-save" type="button">Save Client ID</button>
+                                <p id="spotify-client-result" role="status"></p>
+                            </div>
+                            <label><input id="spotify-search-enabled" type="checkbox" disabled> Include Spotify in search</label>
+                            <p><a id="spotify-advanced" target="_blank" rel="noopener" hidden>Advanced Spotify settings →</a></p>
+                        </section>
                         <h3>Other Settings</h3>
                         <div class='device'>
                           <div class='device-main'>Replay gain</div>
@@ -172,6 +192,7 @@
       <script src="JS/api.js"></script>
       <script src='JS/jquery.knob.min.js'></script>
       <script src='JS/anime.min.js'></script>
+      <script src='JS/spotify.js'></script>
       <script src='JS/main.js'></script>
   </body>
   <script>

@@ -14,6 +14,7 @@ var io = require('socket.io')(http);
 var bodyParser = require('body-parser');
 var playlist = require('./lib/playlist_utils.js');
 var createPlayer = require('./lib/player');
+var spotifyItem = require('./lib/spotify-item');
 var metaget = require("metaget");
 var cp = require('child_process');
 var fs = require("fs");
@@ -30,6 +31,8 @@ var playbackId = 0;
 var shuttingDown = false;
 var audiodevicelist = [];
 var playerBackend = process.env.RANDY_PLAYER_BACKEND || 'mpv';
+var spotify = require('./lib/spotify')({serverUrl:process.env.LMS_SERVER_URL, playerId:process.env.LMS_PLAYER_ID,
+    getSettings:() => playlist.getSettings(), setSetting:(key, value) => playlist.setSetting(key, value)});
 
 //express parsing support
 app.use(bodyParser.json()); // to support JSON-encoded bodies
@@ -40,6 +43,12 @@ app.use(bodyParser.urlencoded({
 ///--- Public web ui folder ---///
 
 app.use("/", express.static(__dirname + "/public"));
+require('./lib/spotify-routes')(app, {spotify, playlist, backend:playerBackend, playSong:playsong, getPlaybackId:() => playbackId});
+spotify.ownership.on('change', function(event){
+    if (playerBackend !== 'lms') return;
+    if (event.state === 'spotify_connect') ++playbackId;
+    io.sockets.emit('spotify-ownership', event);
+});
 
 ///--- APIs Exposed ---///
 
@@ -207,28 +216,33 @@ io.on('connection', function(socket){
     if (playlist.getPlayList().length > 0){
         psocket.emit('playlist', {playlist:playlist.getPlayList(), playing:playlist.getPlaying()});
         var curs = playlist.getCurrentSong();
-        psocket.emit('nowplaying', {title:curs.tags.common.title, albumart:curs.albumart});
+        if (spotifyItem.isSong(curs)) emitLMSNowPlaying(null, curs, psocket);
+        else psocket.emit('nowplaying', {title:curs.tags.common.title, albumart:curs.albumart});
         replayLMSStatus(socket);
     }
     
-    socket.on('play', function(msg){
+    socket.on('play', async function(msg){
       console.log('play');
-      if (playerBackend === 'lms' && playbackId === 0) playsong(playlist.getCurrentSong());
+      if (playerBackend === 'lms' && spotify.ownership.isConnectActive()) return spotify.ownership.remoteControl('play').catch(emitproblem);
+      if (playerBackend === 'lms' && (playbackId === 0 || (spotify.ownership.wasConnect && (await player.getStatus()).playbackId == null))) playsong(playlist.getCurrentSong());
       else player.play();
     });
 
     socket.on('pause', function(msg){
       console.log('pause');
+      if (playerBackend === 'lms') spotify.ownership.cancelPending();
       player.pause();
     });
 
     socket.on('next', function(msg){
       console.log('next');
+      if (playerBackend === 'lms' && spotify.ownership.isConnectActive()) return spotify.ownership.remoteControl('next').catch(emitproblem);
       playsong(playlist.nextsong());
     });
 
     socket.on('prev', function(msg){
       console.log('prev');
+      if (playerBackend === 'lms' && spotify.ownership.isConnectActive()) return spotify.ownership.remoteControl('prev').catch(emitproblem);
       playsong(playlist.prevsong());
     });
     
@@ -377,8 +391,12 @@ function replayLMSStatus(target){
     var currentPlayer = player;
     var currentPlaybackId = playbackId;
     currentPlayer.getStatus().then(function(status){
-        if (player !== currentPlayer || playbackId !== currentPlaybackId || status.playbackId !== currentPlaybackId) return;
+        if (player !== currentPlayer || playbackId !== currentPlaybackId) return;
+        if (spotify.ownership.publish(status, target, true)) return;
+        if (status.playbackId !== currentPlaybackId) return;
         if (typeof status.audioStats === 'string') target.emit('audiostats', status.audioStats);
+        if (status.seekable && status.duration > 0) target.emit('duration', status.duration);
+        if (typeof status.position === 'number') target.emit('pos', status.position);
         if (status.trackMetadata) emitLMSNowPlaying(status, playlist.getCurrentSong(), target);
     });
 }
@@ -394,12 +412,15 @@ function emitproblem(){
 function emitLMSNowPlaying(status, song, target){
     target = target || io.sockets;
     var track = status && status.trackMetadata;
+    if (!track && spotifyItem.isSong(song)) track = {};
     if (track) {
         var artwork = track.artwork;
-        if (artwork && artwork.startsWith('/')) artwork = new URL(artwork, process.env.LMS_SERVER_URL || 'http://127.0.0.1:9000').href;
+        var stored = spotifyItem.isSong(song) ? song.tags.common : {};
+        if (spotifyItem.isSong(song)) artwork = spotifyItem.artwork(artwork, song.albumart);
+        else if (artwork && artwork.startsWith('/')) artwork = new URL(artwork, process.env.LMS_SERVER_URL || 'http://127.0.0.1:9000').href;
         target.emit('nowplaying', {title:track.title || song.tags.common.title,
-            album:[track.artist, track.album].filter(Boolean).join(' • ') || song.tags.common.album || '',
-            albumart:artwork || song.albumart});
+            album:[track.artist || stored.artist, track.album || stored.album].filter(Boolean).join(' • ') || song.tags.common.album || '',
+            albumart:artwork || song.albumart, ...(spotifyItem.isSong(song) ? {source:'spotify', artist:track.artist || song.tags.common.artist, albumName:track.album || song.tags.common.album} : {})});
         return;
     }
     var metadata = status && status.radioMetadata;
@@ -416,7 +437,8 @@ function createNewPlayer(){
     if (shuttingDown) return;
     var newplayer = createPlayer({ backend: playerBackend,
         audioOutputDevice: playlist.getSettings().audioOutputDevice,
-        serverUrl: process.env.LMS_SERVER_URL, playerId: process.env.LMS_PLAYER_ID });
+        serverUrl: process.env.LMS_SERVER_URL, playerId: process.env.LMS_PLAYER_ID,
+        observeExternalPlayback:raw => spotify.ownership.observe(raw) });
     selectedPlayer = newplayer;
     // Keep the LMS instance usable after a temporary connection failure; it polls for recovery.
     if (playerBackend === 'lms') player = newplayer;
@@ -425,11 +447,12 @@ function createNewPlayer(){
         if (event.playbackId != null && event.playbackId !== playbackId) return;
         console.log('LMS connection: ' + event.state + (event.error ? ' - ' + event.error.message : ''));
         io.sockets.emit('player-connection', {backend:'lms', state:event.state, connected:event.connected});
-        if (!event.connected && event.state !== 'closed') emitproblem();
+        if (!event.connected && event.state !== 'closed') { spotify.ownership.disconnected(); emitproblem(); }
     });
     newplayer.on('status', function(status){
         if (selectedPlayer !== newplayer) return;
         if (status.playbackId !== null && status.playbackId !== playbackId) return;
+        if (playerBackend === 'lms' && spotify.ownership.publish(status, io.sockets)) return;
         // Keep the existing Socket.IO payloads and MPV metadata presentation.
         status.changed.forEach(function(field){
             switch (field){
@@ -486,12 +509,16 @@ function createNewPlayer(){
     });
     newplayer.on('ended', function(event){
         if (selectedPlayer !== newplayer || event.playbackId !== playbackId) return;
+        if (playerBackend === 'lms' && spotify.ownership.getOwnership() !== 'randy') return;
         console.log('idle - loading next song');
         playsong(playlist.nextsong());
     });
     newplayer.on('playback-error', function(event){
         if (selectedPlayer !== newplayer) return;
         if (event.playbackId !== null && event.playbackId !== playbackId) return;
+        if (spotifyItem.isSong(playlist.getCurrentSong())) {
+            io.sockets.emit('spotify-problem', {message:'Spotify track unavailable or Spotify needs to reconnect'});
+        }
         console.log('Player error: ' + event.error);
         if (playerBackend === 'lms') emitproblem();
         if (event.restart) restartplayer();
@@ -553,9 +580,15 @@ function timeout(ms) {
 async function playsong(songobj){
     if (shuttingDown) return;
     if (songobj && songobj !== null){
+        if (spotifyItem.isSong(songobj) && playerBackend !== 'lms') {
+            io.sockets.emit('spotify-problem', {message:'Spotify playback requires the LMS backend'});
+            return;
+        }
         var currentPlayer = player;
         var currentPlaybackId = ++playbackId;
         try {
+            if (playerBackend === 'lms' && !(await spotify.ownership.prepareForRandyPlayback(currentPlayer, () => !shuttingDown && player === currentPlayer && playbackId === currentPlaybackId))) return;
+            if (player !== currentPlayer || playbackId !== currentPlaybackId) return;
             console.log('Loading: ' + songobj.songfile);
             if (songobj.hasOwnProperty('songfile')){
                 await currentPlayer.loadAndPlay(songobj, { playbackId: currentPlaybackId });
@@ -571,6 +604,7 @@ async function playsong(songobj){
             if (player !== currentPlayer || playbackId !== currentPlaybackId) return;
             if (playerBackend === 'lms') {
                 console.error('LMS playback failed - ' + error);
+                io.sockets.emit('spotify-problem', {message:error.message});
                 return;
             }
             console.log('Player is unresponsive, restarting mpv - error: ' + error);

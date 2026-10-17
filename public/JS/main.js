@@ -51,7 +51,11 @@ function debounce(func, wait, immediate) {
     };
 };
 
+var localSearchGeneration = 0;
+$('#search-bar').on('input', function () { localSearchGeneration++; spotifyUI.invalidate(); });
 $('#search-bar').keyup(debounce(async function(event) {
+    var searchQuery = $('#search-bar').val(), searchGeneration = localSearchGeneration;
+    spotifyUI.search(searchQuery);
     if (ValidURL($('#search-bar').val())){
         $('#browse-search-url').fadeOut();
         $('#search').addClass('loading');
@@ -82,7 +86,9 @@ $('#search-bar').keyup(debounce(async function(event) {
              browsepane("init");
          } else {
             $('#search').addClass('loading');
-             api.searchSongs($('#search-bar').val()).then(async function(rtn){
+            browsepane('search-results');
+             api.searchSongs(searchQuery).then(async function(rtn){
+                if (searchGeneration !== localSearchGeneration) return;
                 var res = rtn.results;     
                 console.log("search results: " + JSON.stringify(res));
                  var ht = "";
@@ -90,7 +96,8 @@ $('#search-bar').keyup(debounce(async function(event) {
                  ht += "<img class='clickable' onclick='browsepane(\"init\");' src='IMG/Arrow_Right_MD.svg'/>";
                  //if no stations try from browser
                  if (res.radiostations.length == 0){
-                    res.radiostations = await getRadios($('#search-bar').val());
+                    res.radiostations = await getRadios(searchQuery);
+                    if (searchGeneration !== localSearchGeneration) return;
                  }
                  if (res.radiostations.length > 0){
                     hasresults = true;
@@ -139,7 +146,7 @@ $('#search-bar').keyup(debounce(async function(event) {
                     ht += "<h3>No results...</h3>";
                  }
                 
-                $('#browse-search-results').html(ht); 
+                $('#local-search-results').html('<h3>LOCAL</h3>' + ht);
                 $('#search').removeClass('loading');
                 browsepane('search-results');
             });
@@ -255,6 +262,7 @@ function playsong(id){
 }
 
 var socket = io();
+socket.on('spotify-ownership', spotifyUI.setOwnership);
 
 socket.on("disconnect", (reason) => {
     console.log("disconnected");
@@ -331,18 +339,19 @@ socket.on('nowplaying', function(obj){
     console.log("now playing: " + obj.title + ", album art - " + JSON.stringify(obj.albumart));
     //console.log("album: " + obj.album);
     document.title = obj.title;
-    var al = encodeURI(obj.albumart);
+    var al = (obj.source === 'spotify' || obj.source === 'spotify_connect') ? (obj.albumart || '/IMG/Record.png') : encodeURI(obj.albumart);
     var sign = "";
     if (!ValidAAURL(al)){
         al = 'https://api.dicebear.com/9.x/notionists/svg?seed='+obj.album;
         sign = '<span>No Album Cover...?<br/>Randy got you covered! (<a href="https://www.dicebear.com/" target="_blank">https://www.dicebear.com/</a>)</span>';
     }
     if (cursong != null){
-        cursong.find(".onesong-tit").html(obj.title);
+        cursong.find(".onesong-tit")[(obj.source === 'spotify' || obj.source === 'spotify_connect') ? 'text' : 'html'](obj.title);
+        if ((obj.source === 'spotify' || obj.source === 'spotify_connect')) cursong.find('.spotify-cover').attr('src', al);
         if (obj.hasOwnProperty('album')){
-            cursong.find(".onesong-artist").html(obj.album);
+            cursong.find(".onesong-artist")[(obj.source === 'spotify' || obj.source === 'spotify_connect') ? 'text' : 'html'](obj.album);
         }
-        var newimg = "<img class='album-cover-pane' src=\"" + al + "\"/>" + sign;
+        var newimg = "<img class='album-cover-pane' src=\"" + spotifyUI.escape(al) + "\"/>" + sign;
         if ($('#browse-zen').find("img").attr("src") != al){
             if ($('#browse-zen').is(":hidden")){
                 $('.album-art').css("background-image", 
@@ -376,12 +385,16 @@ socket.on('playlist', function(objj){
        if (obj[i].hasOwnProperty('tags')){
             tit = obj[i].tags.common.title;
             artistalbum = obj[i].tags.common.artist;
-            if (obj[i].type == "file"){
-                len = Math.round(obj[i].tags.format.duration);
+            if (obj[i].type == "file" || obj[i].type === "spotify"){
+                len = obj[i].type === 'spotify' && !obj[i].tags.format.duration ? '' : Math.round(obj[i].tags.format.duration);
                 artistalbum = obj[i].tags.common.album + " - " + obj[i].tags.common.artist;
             } 
         }
        var ns = "<div onclick='playsong("+i+");' class='onesong " + plitemclass + "' id='song_" + i + "' data-id='" + i + "'>";
+       if (obj[i].type === 'spotify') {
+           ns += '<img class="spotify-cover" alt="Spotify" src="' + spotifyUI.escape(obj[i].albumart || '/IMG/Record.png') + '">';
+           tit = spotifyUI.escape(tit); artistalbum = spotifyUI.escape(artistalbum);
+       }
        ns += "<div class='onesong-details'>";
        ns += "<div class='onesong-tit' title='" + tit + "'>" + tit + "</div>";
        ns += "<div class='onesong-artist' title='" + artistalbum + "'>" + artistalbum + "</div>";
@@ -395,6 +408,7 @@ socket.on('playlist', function(objj){
    } 
     //set the current song
     cursong = $('#song_' + curid);
+    spotifyUI.useConnectRow(curid);
     //scroll to the current song
     if (scrolltosong){
         var firstel = $('#song_1');
@@ -416,7 +430,7 @@ function browsepane(mode){
         $('#browse-zen').hide();
         //sync the images
         var curimg = $('#browse-zen').find("img").attr("src");
-        $('.album-art').css("background-image", 'url("' + (ValidURL(curimg) ? curimg : 'IMG/Record.png') + '")');
+        $('.album-art').css("background-image", 'url("' + ((ValidURL(curimg) || (curimg || '').indexOf('/spotify/artwork?') === 0) ? curimg : 'IMG/Record.png') + '")');
     } else {
         $('#browse-home').hide();
         $('#browse-zen').show();
@@ -437,7 +451,7 @@ function browsepane(mode){
                      for (i in res){
                          templist.allstickies.push(res[i].path);
                          ht += "<div class='search-result'>";
-                         ht += "<div class='search-result-name clickablelink' onclick='doSongOption(\"playnow\",\"allstickies\",\""+i+"\")'>" + res[i].name + "</div>"; 
+                         ht += "<div class='search-result-name clickablelink' onclick='doSongOption(\"playnow\",\"allstickies\",\""+i+"\")'>" + (res[i].source === 'spotify' ? '<img class="spotify-cover" alt="Spotify" src="' + spotifyUI.escape(res[i].albumart) + '">' + spotifyUI.escape(res[i].name) : res[i].name) + "</div>";
                          ht += "<div class='search-result-options'>" + songoptions('allstickies',i) + "</div>";
                          ht += "</div>";
                      }
@@ -663,7 +677,7 @@ function populateStickies(ele, lim){
              for (i in res){
                  templist.initstickies.push(res[i].path);
                  ht += "<div class='search-result'>";
-                 ht += "<div class='search-result-name clickablelink' onclick='doSongOption(\"playnow\",\"initstickies\",\""+i+"\")'>" + res[i].name + "</div>"; 
+                 ht += "<div class='search-result-name clickablelink' onclick='doSongOption(\"playnow\",\"initstickies\",\""+i+"\")'>" + (res[i].source === 'spotify' ? '<img class="spotify-cover" alt="Spotify" src="' + spotifyUI.escape(res[i].albumart) + '">' + spotifyUI.escape(res[i].name) : res[i].name) + "</div>";
                  ht += "<div class='search-result-options'>" + songoptions('initstickies',i) + "</div>";
                  ht += "</div>";
              }
@@ -863,7 +877,7 @@ function formatBytes(a,b=2,k=1024) {
 
 
 function ValidAAURL(str){
-    return (ValidURL(str) || str.indexOf("/mnt/") == 0);
+    return (ValidURL(str) || str.indexOf('/spotify/artwork?') === 0 || str === '/IMG/Record.png' || str.indexOf("/mnt/") == 0);
 }
 
 function Bounce(ele) {

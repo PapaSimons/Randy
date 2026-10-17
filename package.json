@@ -22,6 +22,7 @@
     "radio-browser-api": "^6.0.3",
     "simple-json-db": "^2.0.0",
     "smart-observe": "^1.0.4",
-    "socket.io": "^4.8.1"
+    "socket.io": "^4.8.1",
+    "cheerio": "1.0.0-rc.12"
   }
 }

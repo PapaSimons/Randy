@@ -47,7 +47,7 @@ async function server(env = {}, options = {}) {
         players.push(player);
         return player;
     }
-    const app = { use: () => {}, post: (name, handler) => routes.set(name, handler) };
+    const app = { get: (name, handler) => routes.set(name, handler), use: () => {}, post: (name, handler) => routes.set(name, handler) };
     const express = () => app;
     express.static = () => {};
     const modules = {
@@ -57,6 +57,9 @@ async function server(env = {}, options = {}) {
         'body-parser': { json: () => {}, urlencoded: () => {} },
         './lib/playlist_utils.js': playlist,
         './lib/player': createPlayer,
+        './lib/spotify-item': require('../lib/spotify-item'),
+        './lib/spotify': require('../lib/spotify'),
+        './lib/spotify-routes': require('../lib/spotify-routes'),
         metaget: {},
         child_process: { spawnSync: () => {} },
         fs: { existsSync: () => false },
@@ -403,4 +406,47 @@ test('Spotify native metadata is replayed after playlist rebuilds and to a new b
     f.io.emit('connection', browser); await flush();
     assert.equal(events.at(-1).title, 'Native Spotify title');
     assert.equal(events.at(-1).albumart, 'http://127.0.0.1:9000/cover.jpg');
+});
+
+test('LMS playlist rebuild replays duration and position after the row is recreated', async () => {
+    const f = await server({RANDY_PLAYER_BACKEND:'lms'});
+    f.socket.emit('playsong',0);await flush();
+    f.players[0].getStatus = async () => ({playbackId:f.context.playbackId,seekable:true,duration:155.6,position:12.5,audioStats:'OGG 320kbps'});
+    f.context.emitplaylist();await flush();
+    const index=f.sent.findLastIndex(e=>e.name==='playlist');
+    assert.ok(f.sent.findLastIndex(e=>e.name==='duration'&&e.data===155.6)>index);
+    assert.ok(f.sent.findLastIndex(e=>e.name==='pos'&&e.data===12.5)>index);
+});
+test('saved Spotify metadata and artwork are usable before LMS enriches the current track', async () => {
+    const f=await server({RANDY_PLAYER_BACKEND:'lms'});
+    f.songs[0]={type:'spotify',songfile:'spoton://track:3M0zi8iD2KRzY71XcGFUpE',albumart:'https://i.scdn.co/image/cover',tags:{common:{title:'Saved title',artist:'Saved artist',album:'Saved album'},format:{}}};
+    f.socket.emit('playsong',0);await flush();
+    const value=f.sent.findLast(e=>e.name==='nowplaying').data;
+    assert.equal(value.title,'Saved title');assert.equal(value.artist,'Saved artist');assert.equal(value.source,'spotify');
+    assert.match(value.albumart,/^\/spotify\/artwork\?/);
+});
+
+test('actual local-search route completes while Spotify is stalled or unavailable', async () => {
+    const f=await server({RANDY_PLAYER_BACKEND:'lms'});
+    const local={albums:[{name:'Local album'}],files:[{name:'Local track'}],radiostations:[]};
+    f.playlist.searchSongs=async()=>local;
+    let finish;
+    f.context.spotify.search=()=>new Promise(resolve=>{finish=resolve;});
+    const remote={status(){return this;},json(value){this.value=value;}};
+    const pending=f.routes.get('/spotify/search')({body:{keyword:'Artist'}},remote);
+    const result={header(){},json(value){this.value=value;}};
+    f.routes.get('/searchSongs')({body:{keyword:'Artist'}},result);await flush();
+    assert.equal(result.value.results,local);assert.equal(remote.value,undefined);
+    finish({tracks:[],albums:[],artists:[],playlists:[],message:'Spotify unavailable'});await pending;
+    assert.equal(result.value.results,local);assert.equal(remote.value.results.tracks.length,0);
+});
+
+test('new browser receives current Connect metadata even though Connect has no Randy playbackId',async()=>{
+ const f=await server({RANDY_PLAYER_BACKEND:'lms'});
+ const external=f.context.spotify.ownership.observe({mode:'play',time:12,duration:200,playlist_loop:[{url:'spoton://connect-123',title:'Connect title',artist:'Connect artist',album:'Connect album',artwork_url:'https://i.scdn.co/image/cover'}]});
+ f.players[0].getStatus=async()=>({playbackId:null,externalPlayback:external,audioStats:'PCM 320kbps'});
+ const browser=new EventEmitter(),events=[];for(const name of ['nowplaying','spotify-ownership','pos'])browser.on(name,data=>events.push({name,data}));
+ f.io.emit('connection',browser);await flush();
+ const meta=events.findLast(e=>e.name==='nowplaying').data;assert.equal(meta.source,'spotify_connect');assert.equal(meta.title,'Connect title');
+ assert.ok(events.some(e=>e.name==='spotify-ownership'&&e.data.state==='spotify_connect'));assert.equal(f.songs[0].tags.common.title,'A');
 });

@@ -24,7 +24,7 @@ function fixture(t, options = {}) {
             if (command[0] === 'time') raw.time = command[1];
             if (command[0] === 'mixer') raw['mixer volume'] = command[2];
             if (command[0] === 'playlist' && command[1] === 'play') {
-                raw.playlist_loop = [{ url: /^spotify:/.test(command[2]) ? command[2].replace(/^spotify:(?:\/\/)?/, 'spotify://') : /^https?:/.test(command[2]) ? command[2] : 'file://' + command[2] }]; raw.time = '0';
+                raw.playlist_loop = [{ url: /^spotify:/.test(command[2]) ? command[2].replace(/^spotify:(?:\/\/)?/, 'spotify://') : /^(?:https?:|spoton:)/.test(command[2]) ? command[2] : 'file://' + command[2] }]; raw.time = '0';
             }
             return { ok: true, json: async () => ({ result: command[0] === 'players' ? { count: raw.player_connected == null ? 0 : 1, players_loop: raw.player_connected == null ? [] : [{ playerid: 'test-player', connected: raw.player_connected }] } : command[0] === 'status' ? { ...raw } : {} }) };
         }
@@ -642,21 +642,30 @@ test('Spotify loads only one track and accepts the canonical LMS status URI', as
 for (const uri of ['spotify:album:2WNI378JH55k63eXBHbjbI', 'spotify:playlist:6RQNh4WKdhsn8hcihVDMsM',
     'spotify:artist:3WrFJ7ztbogyGnTHbHJFl2', 'spotify:track:bad', 'spotify:track:6UCFZ9ZOFRxK8oak7MdPZu?token=bad']) {
     test('rejects non-track or malformed Spotify URI: ' + uri, async t => {
-        const f = fixture(t); await assert.rejects(f.load(1, uri), /individual spotify:track/);
+        const f = fixture(t); await assert.rejects(f.load(1, uri), /individual Spotify\/SpotOn track/);
         assert.equal(f.calls.length, 0);
     });
 }
 
-test('Spotify metadata and plugin bitrate are exposed without inferring missing values', async t => {
+test('Spotify source quality is not inferred from SpotOn transport or configured bitrate', async t => {
     const f = fixture(t); await f.load(1, spotifyA);
     Object.assign(f.raw.playlist_loop[0], { title: 'Her Majesty', artist: 'The Beatles', album: 'Abbey Road',
         artwork_url: '/imageproxy/art/image.png', type: 'ogg', samplerate: '44100', samplesize: '16', bitrate: '320k VBR' });
     await f.player._poll(); const s = await f.player.getStatus();
     assert.deepEqual(s.trackMetadata, { title: 'Her Majesty', artist: 'The Beatles', album: 'Abbey Road', artwork: '/imageproxy/art/image.png' });
-    assert.equal(s.audioStats, 'OGG 44.1kHz 16bit 320kbps');
+    assert.equal(s.audioStats, 'Spotify');
     await f.load(2, '/music/A.wav');
     assert.equal((await f.player.getStatus()).trackMetadata, null);
 });
+
+for (const type of ['PCM, SpotOn Connect', 'FLAC, SpotOn Browse', 'OGG, SpotOn Browse']) {
+    test('SpotOn relay details are not presented as Spotify source quality: ' + type, async t => {
+        const f = fixture(t); await f.load(1, spotifyA);
+        Object.assign(f.raw.playlist_loop[0], {type, samplerate:'44100', samplesize:'16', bitrate:'320k'});
+        await f.player._poll();
+        assert.equal((await f.player.getStatus()).audioStats, 'Spotify');
+    });
+}
 
 test('Spotify rejects stale URI and in-flight metadata after track replacement', async t => {
     const f = fixture(t); await f.load(1, spotifyA);
@@ -691,4 +700,48 @@ test('Spotify request recovers after infrastructure outage at its saved position
     assert.equal((await f.player.getStatus()).state, 'playing');
     assert.ok(f.calls.some(c => c[0] === 'time' && c[1] === '4'));
     assert.equal(f.ended.length, 0); assert.equal(f.errors.length, 0);
+});
+
+for (const [name, source, target] of [
+    ['Spotify to Spotify','spoton://track:3M0zi8iD2KRzY71XcGFUpE','spoton://track:6UCFZ9ZOFRxK8oak7MdPZu'],
+    ['Spotify to local','spoton://track:3M0zi8iD2KRzY71XcGFUpE','/music/A.wav'],
+    ['local to Spotify','/music/A.wav','spoton://track:3M0zi8iD2KRzY71XcGFUpE'],
+    ['Spotify to radio','spoton://track:3M0zi8iD2KRzY71XcGFUpE','https://radio.example/live'],
+    ['radio to Spotify','https://radio.example/live','spoton://track:3M0zi8iD2KRzY71XcGFUpE']
+]) test('SpotOn source transition: ' + name, async t => {
+    const f = fixture(t); await f.load(1, source);
+    f.raw.time = '2'; await f.player._poll();
+    await f.load(2, target);
+    assert.equal((await f.player.getStatus()).playbackId, 2);
+    assert.equal(f.calls.filter(c => c[0] === 'playlist' && c[1] === 'play').length, 2);
+    assert.equal(f.calls.findLast(c => c[0] === 'playlist' && c[1] === 'play')[2], target);
+    assert.equal(f.ended.length, 0); assert.equal(f.errors.length, 0);
+});
+test('SpotOn unavailable track reports once and never advances the queue', async t => {
+    const f = fixture(t, {streamStartTimeout: 10}); await f.load(1, 'spoton://track:3M0zi8iD2KRzY71XcGFUpE');
+    f.raw.mode = 'stop'; f.player.current.startAt = Date.now() - 50;
+    await f.player._poll(); await f.player._poll();
+    assert.equal(f.errors.length, 1); assert.equal(f.ended.length, 0);
+    assert.match(f.errors[0].error.message, /Spotify needs to reconnect/);
+    await f.player.play(); assert.equal(f.player.current.ended, false);
+    assert.equal(f.calls.filter(c=>c[0]==='playlist'&&c[1]==='play').length,2);
+});
+test('SpotOn natural completion emits once, and stale artwork cannot replace current metadata', async t => {
+    const f = fixture(t); const a = 'spoton://track:3M0zi8iD2KRzY71XcGFUpE';
+    await f.load(1,a); f.raw.time='9.99'; f.raw.playlist_loop[0].artwork_url='https://i.scdn.co/image/A';
+    await f.player._poll(); f.raw.mode='stop';await f.player._poll();await f.player._poll();assert.equal(f.ended.length,1);
+    await f.load(2,'spoton://track:6UCFZ9ZOFRxK8oak7MdPZu');
+    f.raw.playlist_loop=[{url:a,artwork_url:'https://i.scdn.co/image/A'}];await f.player._poll();
+    assert.equal((await f.player.getStatus()).trackMetadata.artwork,'');
+});
+
+test('SpotOn load while LMS is down recovers only the latest selected track', async t => {
+    const f=fixture(t);f.handler(async()=>{throw new TypeError('fetch failed');});
+    await f.load(1,'spoton://track:3M0zi8iD2KRzY71XcGFUpE');
+    await f.load(2,'spoton://track:6UCFZ9ZOFRxK8oak7MdPZu');
+    assert.equal(f.ended.length,0);assert.equal(f.errors.length,0);
+    f.handler(null);await f.player._poll();
+    const loads=f.calls.filter(c=>c[0]==='playlist'&&c[1]==='play');
+    assert.equal(loads.length,1);assert.equal(loads[0][2],'spoton://track:6UCFZ9ZOFRxK8oak7MdPZu');
+    assert.equal(f.ended.length,0);assert.equal(f.errors.length,0);
 });
