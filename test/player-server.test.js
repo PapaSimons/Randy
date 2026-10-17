@@ -71,7 +71,7 @@ async function server(env = {}, options = {}) {
         __dirname: path.join(__dirname, '..'),
         console: { log: () => {}, error: () => {} },
         process: { env, argv: [], platform: 'darwin', on: (name, handler) => signals.set(name, handler), exit: code => exits.push(code) },
-        setTimeout: (callback, ms) => setTimeout(callback, options.fastShutdownDeadline && ms === 4000 ? 1 : ms), clearTimeout
+        setTimeout: (callback, ms) => setTimeout(callback, options.fastShutdownDeadline && ms === 4000 ? 1 : ms), clearTimeout, URL
     });
     vm.runInContext(fs.readFileSync(path.join(__dirname, '../index.js'), 'utf8'), context);
     await flush();
@@ -374,4 +374,33 @@ test('LMS Play before the first load selects Randy current song even while disco
     socket.emit('play'); await flush();
     assert.equal(players[0].calls.filter(c => c[0] === 'loadAndPlay').length, 1);
     assert.ok(players[0].calls.some(c => c[0] === 'play'));
+});
+
+test('Spotify metadata uses unchanged nowplaying fields and resolves LMS-relative artwork', async () => {
+    const f = await server({ RANDY_PLAYER_BACKEND: 'lms', LMS_SERVER_URL: 'http://127.0.0.1:9000' });
+    f.socket.emit('playsong', 0); await flush();
+    const status = { playbackId: f.context.playbackId, trackMetadata: { title: 'Her Majesty', artist: 'The Beatles',
+        album: 'Abbey Road', artwork: '/imageproxy/art/image.png' }, changed: ['trackMetadata'] };
+    f.players[0].emit('status', status);
+    const e = f.sent.at(-1); assert.equal(e.name, 'nowplaying');
+    assert.equal(e.data.title, 'Her Majesty'); assert.equal(e.data.album, 'The Beatles • Abbey Road');
+    assert.equal(e.data.albumart, 'http://127.0.0.1:9000/imageproxy/art/image.png');
+    const count = f.sent.length;
+    f.players[0].emit('status', { ...status, playbackId: f.context.playbackId - 1 });
+    assert.equal(f.sent.length, count);
+});
+
+test('Spotify native metadata is replayed after playlist rebuilds and to a new browser', async () => {
+    const f = await server({ RANDY_PLAYER_BACKEND: 'lms' });
+    f.players[0].getStatus = async () => ({ playbackId: f.context.playbackId, audioStats: 'OGG 320kbps',
+        trackMetadata: { title: 'Native Spotify title', artist: 'Artist', album: 'Album', artwork: '/cover.jpg' } });
+    f.socket.emit('playsong', 0); await flush();
+    const lastPlaylist = f.sent.findLastIndex(e => e.name === 'playlist');
+    const lastMetadata = f.sent.findLastIndex(e => e.name === 'nowplaying' && e.data.title === 'Native Spotify title');
+    assert.ok(lastMetadata > lastPlaylist);
+    const browser = new EventEmitter(), events = [];
+    browser.on('nowplaying', data => events.push(data));
+    f.io.emit('connection', browser); await flush();
+    assert.equal(events.at(-1).title, 'Native Spotify title');
+    assert.equal(events.at(-1).albumart, 'http://127.0.0.1:9000/cover.jpg');
 });

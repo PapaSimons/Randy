@@ -208,7 +208,7 @@ io.on('connection', function(socket){
         psocket.emit('playlist', {playlist:playlist.getPlayList(), playing:playlist.getPlaying()});
         var curs = playlist.getCurrentSong();
         psocket.emit('nowplaying', {title:curs.tags.common.title, albumart:curs.albumart});
-        replayLMSAudioStats(socket);
+        replayLMSStatus(socket);
     }
     
     socket.on('play', function(msg){
@@ -367,18 +367,19 @@ process.on('uncaughtException', function (err) {
 function emitplaylist(){
     console.log('playlist changed ' + playlist.getPlaying());
     io.sockets.emit('playlist', {playlist:playlist.getPlayList(), playing:playlist.getPlaying()});
-    replayLMSAudioStats(io.sockets);
+    replayLMSStatus(io.sockets);
 }
 
 // The unchanged frontend rebuilds the current song row on every playlist event.
-// Replay cached stats afterwards, even when the source format has not changed.
-function replayLMSAudioStats(target){
+// Replay cached stats/Spotify metadata afterwards, even when they have not changed.
+function replayLMSStatus(target){
     if (playerBackend !== 'lms' || !player) return;
     var currentPlayer = player;
     var currentPlaybackId = playbackId;
     currentPlayer.getStatus().then(function(status){
         if (player !== currentPlayer || playbackId !== currentPlaybackId || status.playbackId !== currentPlaybackId) return;
         if (typeof status.audioStats === 'string') target.emit('audiostats', status.audioStats);
+        if (status.trackMetadata) emitLMSNowPlaying(status, playlist.getCurrentSong(), target);
     });
 }
 
@@ -390,11 +391,21 @@ function emitproblem(){
     io.sockets.emit('problem', {});
 }
 
-function emitLMSNowPlaying(status, song){
+function emitLMSNowPlaying(status, song, target){
+    target = target || io.sockets;
+    var track = status && status.trackMetadata;
+    if (track) {
+        var artwork = track.artwork;
+        if (artwork && artwork.startsWith('/')) artwork = new URL(artwork, process.env.LMS_SERVER_URL || 'http://127.0.0.1:9000').href;
+        target.emit('nowplaying', {title:track.title || song.tags.common.title,
+            album:[track.artist, track.album].filter(Boolean).join(' • ') || song.tags.common.album || '',
+            albumart:artwork || song.albumart});
+        return;
+    }
     var metadata = status && status.radioMetadata;
     var nowplaying = {title:metadata && metadata.title || song.tags.common.title, albumart:song.albumart};
     if (metadata) nowplaying.album = metadata.stationName || song.tags.common.title;
-    io.sockets.emit('nowplaying', nowplaying);
+    target.emit('nowplaying', nowplaying);
 }
 
 async function setVolume(vol) {
@@ -432,6 +443,7 @@ function createNewPlayer(){
                     io.sockets.emit('volume', status.volume);
                     break;
                 case 'radioMetadata':
+                case 'trackMetadata':
                     if (playerBackend === 'lms') emitLMSNowPlaying(status, playlist.getCurrentSong());
                     break;
                 case 'audioStats':
