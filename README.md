@@ -2,8 +2,7 @@ Welcome to Randy!
 
 ### Playback backend
 
-MPV remains the default (`npm start`). To select an already running LMS server
-and connected Squeezelite player, use Node.js 22 or newer:
+MPV remains the default (`npm start`). To select LMS, use Node.js 22 or newer:
 
 ```sh
 RANDY_PLAYER_BACKEND=lms LMS_SERVER_URL=http://127.0.0.1:9000 \
@@ -15,7 +14,10 @@ LMS_PLAYER_ID=02:52:41:4e:44:59 PORT=3000 npm start
 supports absolute local file paths accessible to the LMS host and direct
 HTTP(S) internet radio streams. Other online sources are not supported yet.
 Randy chooses each track; LMS shuffle/repeat are disabled. LMS and Squeezelite
-must already be running. Randy does not manage their services or audio devices.
+may start before or after Randy. Randy retries unavailable services in the
+background without skipping tracks. Randy does not manage their processes or
+audio devices; see [playback reliability](docs/playback-reliability.md) for
+recovery behavior, the macOS Squeezelite LaunchAgent, and Debian service design.
 Radio station objects, selection and stickies remain owned by Randy. LMS's
 `current_title` and `remote_title` supply live titles/station names when present;
 otherwise Randy keeps the station title and artwork. Live streams have no
@@ -31,8 +33,11 @@ through LMS. Closing the adapter releases polling without stopping
 the external player. Local-file completion requires observed playback near a known duration
 followed by stopped status; outages or insufficient observations may leave the
 track selected rather than advance it. An external stop near the end cannot be
-distinguished reliably from EOF. Failed local loads and JSON-RPC/connection
-errors are reported without automatic skipping or replay. Run adapter/server
+distinguished reliably from EOF. Failed local media loads do not automatically skip tracks. JSON-RPC/connection
+errors never skip a track. Infrastructure failures retry the current request;
+seekable files resume approximately and live streams restart. Connection state
+is exposed through the existing player status and `player-connection` Socket.IO
+events; the existing problem notification signals outages. Run adapter/server
 tests with `node --test test/*.test.js`.
 
 Randy is a minimalist music streamer and player for raspberry pi, linux and macos.

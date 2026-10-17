@@ -27,6 +27,7 @@ var psocket = null;
 var port = process.env.PORT || process.argv[2] || 80;
 var selectedPlayer = null;
 var playbackId = 0;
+var shuttingDown = false;
 var audiodevicelist = [];
 var playerBackend = process.env.RANDY_PLAYER_BACKEND || 'mpv';
 
@@ -185,6 +186,16 @@ io.on('connection', function(socket){
     
     console.log('a user connected');
 
+    if (playerBackend === 'lms' && player) {
+        var connectionPlayer = player;
+        connectionPlayer.getStatus().then(function(status){
+            if (player !== connectionPlayer) return;
+            if (!status.connectionState) return;
+            socket.emit('player-connection', {backend:'lms', state:status.connectionState, connected:status.connected});
+            if (!status.connected) socket.emit('problem', {});
+        });
+    }
+
     //volume
     io.sockets.emit('volume', playlist.getVolume());
     
@@ -197,11 +208,13 @@ io.on('connection', function(socket){
         psocket.emit('playlist', {playlist:playlist.getPlayList(), playing:playlist.getPlaying()});
         var curs = playlist.getCurrentSong();
         psocket.emit('nowplaying', {title:curs.tags.common.title, albumart:curs.albumart});
+        replayLMSAudioStats(socket);
     }
     
     socket.on('play', function(msg){
       console.log('play');
-      player.play();
+      if (playerBackend === 'lms' && playbackId === 0) playsong(playlist.getCurrentSong());
+      else player.play();
     });
 
     socket.on('pause', function(msg){
@@ -314,11 +327,36 @@ function initRandy(){
 
 initRandy();   
 
-//close the playback backend when nodejs exits
-process.on('SIGINT', async function() {
-    if (selectedPlayer) await selectedPlayer.close();
-    process.exit(0);
-});
+// Stop external LMS playback on graceful shutdown; MPV close already kills MPV.
+async function shutdown(){
+    if (shuttingDown) return;
+    shuttingDown = true;
+    var currentPlayer = selectedPlayer;
+    selectedPlayer = null; // Ignore late completion/reconnect events during cleanup.
+    var stopDeadline;
+    try {
+        if (currentPlayer && playerBackend === 'lms') {
+            await Promise.race([
+                currentPlayer.stop(),
+                new Promise(function(resolve, reject){
+                    stopDeadline = setTimeout(function(){ reject(new Error('Timed out stopping LMS playback')); }, 4000);
+                })
+            ]);
+        }
+    } catch (error) {
+        console.error('Playback shutdown: ' + error.message);
+    } finally {
+        clearTimeout(stopDeadline);
+        try {
+            if (currentPlayer) await currentPlayer.close();
+        } catch (error) {
+            console.error('Player cleanup: ' + error.message);
+        }
+        process.exit(0);
+    }
+}
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
 
 //keep nodejs alive
 process.on('uncaughtException', function (err) {
@@ -329,6 +367,19 @@ process.on('uncaughtException', function (err) {
 function emitplaylist(){
     console.log('playlist changed ' + playlist.getPlaying());
     io.sockets.emit('playlist', {playlist:playlist.getPlayList(), playing:playlist.getPlaying()});
+    replayLMSAudioStats(io.sockets);
+}
+
+// The unchanged frontend rebuilds the current song row on every playlist event.
+// Replay cached stats afterwards, even when the source format has not changed.
+function replayLMSAudioStats(target){
+    if (playerBackend !== 'lms' || !player) return;
+    var currentPlayer = player;
+    var currentPlaybackId = playbackId;
+    currentPlayer.getStatus().then(function(status){
+        if (player !== currentPlayer || playbackId !== currentPlaybackId || status.playbackId !== currentPlaybackId) return;
+        if (typeof status.audioStats === 'string') target.emit('audiostats', status.audioStats);
+    });
 }
 
 function emitsticky(){
@@ -351,12 +402,20 @@ async function setVolume(vol) {
 }
 
 function createNewPlayer(){
+    if (shuttingDown) return;
     var newplayer = createPlayer({ backend: playerBackend,
         audioOutputDevice: playlist.getSettings().audioOutputDevice,
         serverUrl: process.env.LMS_SERVER_URL, playerId: process.env.LMS_PLAYER_ID });
     selectedPlayer = newplayer;
     // Keep the LMS instance usable after a temporary connection failure; it polls for recovery.
     if (playerBackend === 'lms') player = newplayer;
+    newplayer.on('connection-change', function(event){
+        if (selectedPlayer !== newplayer || playerBackend !== 'lms') return;
+        if (event.playbackId != null && event.playbackId !== playbackId) return;
+        console.log('LMS connection: ' + event.state + (event.error ? ' - ' + event.error.message : ''));
+        io.sockets.emit('player-connection', {backend:'lms', state:event.state, connected:event.connected});
+        if (!event.connected && event.state !== 'closed') emitproblem();
+    });
     newplayer.on('status', function(status){
         if (selectedPlayer !== newplayer) return;
         if (status.playbackId !== null && status.playbackId !== playbackId) return;
@@ -376,7 +435,7 @@ function createNewPlayer(){
                     if (playerBackend === 'lms') emitLMSNowPlaying(status, playlist.getCurrentSong());
                     break;
                 case 'audioStats':
-                    io.sockets.emit('audiostats', status.mpv.audioStats);
+                    io.sockets.emit('audiostats', playerBackend === 'lms' ? status.audioStats : status.mpv.audioStats);
                     break;
                 case 'mediaTitle':
                     if (status.mpv.mediaTitle){
@@ -427,7 +486,7 @@ function createNewPlayer(){
     });
     newplayer.connect().then(function(){
         if (selectedPlayer !== newplayer) return;
-        console.log('New ' + playerBackend + ' player connected');
+        console.log(playerBackend === 'lms' ? 'LMS adapter initialized; recovery runs in background' : 'New mpv player connected');
         player = newplayer;
         setVolume(playlist.getVolume());
         if (playlist.getPlayList().length > 0){
@@ -480,6 +539,7 @@ function timeout(ms) {
 } 
 
 async function playsong(songobj){
+    if (shuttingDown) return;
     if (songobj && songobj !== null){
         var currentPlayer = player;
         var currentPlaybackId = ++playbackId;
@@ -493,7 +553,7 @@ async function playsong(songobj){
                     if (player !== currentPlayer || playbackId !== currentPlaybackId) return;
                     emitLMSNowPlaying(status, songobj);
                 }
-                io.sockets.emit('playlist', {playlist:playlist.getPlayList(), playing:playlist.getPlaying()});
+                emitplaylist();
             }
         } catch(error) {
             if (player !== currentPlayer || playbackId !== currentPlaybackId) return;

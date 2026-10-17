@@ -10,15 +10,16 @@ const vm = require('node:vm');
 const flush = () => new Promise(resolve => setImmediate(resolve));
 
 // Execute the actual server wiring without starting HTTP, MPV or persistent databases.
-async function server(env = {}) {
+async function server(env = {}, options = {}) {
     const sent = [], players = [], routes = new Map();
+    const signals = new Map(), exits = [];
     const io = new EventEmitter();
     io.sockets = { emit: (name, data) => sent.push({ name, data }) };
     const songs = ['A', 'B'].map(title => ({
         songfile: '/music/' + title + '.flac', albumart: '/cover.jpg',
         tags: { common: { title, artist: 'Artist', album: 'Album' } }
     }));
-    const settings = { musicfolders: null, audioOutputDevice: 'auto', playonstart: 'false' };
+    const settings = { musicfolders: null, audioOutputDevice: 'auto', playonstart: options.playonstart || 'false' };
     const playlist = {
         index: 0, nextCalls: 0,
         getSettings: () => settings,
@@ -42,7 +43,7 @@ async function server(env = {}) {
             player[name] = (...args) => { player.calls.push([name, ...args]); return Promise.resolve(); };
         }
         player.loadAndPlay = (...args) => { player.calls.push(['loadAndPlay', ...args]); return Promise.resolve(); };
-        player.getStatus = () => Promise.resolve({});
+        player.getStatus = () => Promise.resolve(options.status || {});
         players.push(player);
         return player;
     }
@@ -69,15 +70,45 @@ async function server(env = {}) {
         },
         __dirname: path.join(__dirname, '..'),
         console: { log: () => {}, error: () => {} },
-        process: { env, argv: [], platform: 'darwin', on: () => {} },
-        setTimeout, clearTimeout
+        process: { env, argv: [], platform: 'darwin', on: (name, handler) => signals.set(name, handler), exit: code => exits.push(code) },
+        setTimeout: (callback, ms) => setTimeout(callback, options.fastShutdownDeadline && ms === 4000 ? 1 : ms), clearTimeout
     });
     vm.runInContext(fs.readFileSync(path.join(__dirname, '../index.js'), 'utf8'), context);
     await flush();
     const socket = new EventEmitter();
     io.emit('connection', socket);
-    return { context, socket, players, sent, playlist, routes, songs };
+    return { context, socket, players, sent, playlist, routes, songs, io, signals, exits };
 }
+
+for (const signal of ['SIGINT', 'SIGTERM']) test(signal + ' stops LMS playback before closing without advancing or repeating cleanup', async () => {
+    const f = await server({ RANDY_PLAYER_BACKEND: 'lms' });
+    f.socket.emit('playsong', 0); await flush();
+    const player = f.players[0]; player.calls.length = 0;
+    player.stop = async () => {
+        player.calls.push(['stop']);
+        player.emit('ended', { playbackId: f.context.playbackId });
+    };
+    await f.signals.get(signal)(); await f.signals.get(signal)();
+    assert.deepEqual(player.calls, [['stop'], ['close']]);
+    assert.equal(f.playlist.nextCalls, 0);
+    assert.deepEqual(f.exits, [0]);
+    f.socket.emit('playsong', 1); await flush();
+    assert.deepEqual(player.calls, [['stop'], ['close']]);
+});
+
+test('graceful shutdown preserves MPV close behavior', async () => {
+    const f = await server(); f.players[0].calls.length = 0;
+    await f.signals.get('SIGTERM')();
+    assert.deepEqual(f.players[0].calls, [['close']]); assert.deepEqual(f.exits, [0]);
+});
+
+for (const failure of ['reject', 'timeout']) test('LMS shutdown still closes and exits after stop ' + failure, async () => {
+    const f = await server({ RANDY_PLAYER_BACKEND: 'lms' }, { fastShutdownDeadline: true });
+    f.players[0].stop = () => failure === 'reject' ? Promise.reject(new Error('LMS unavailable')) : new Promise(() => {});
+    f.players[0].calls.length = 0;
+    await f.signals.get('SIGINT')();
+    assert.deepEqual(f.players[0].calls, [['close']]); assert.deepEqual(f.exits, [0]);
+});
 
 test('server routes controls through the common interface and keeps Randy selection', async () => {
     const { socket, players, playlist, songs, sent } = await server();
@@ -234,6 +265,68 @@ test('LMS radio uses unchanged nowplaying/problem contracts, station art, and re
     assert.equal(sent.at(-1).name, 'problem');
 });
 
+test('LMS audio stats use the existing Socket.IO contract and reject stale updates', async () => {
+    const { socket, context, players, sent } = await server({ RANDY_PLAYER_BACKEND: 'lms' });
+    socket.emit('playsong', 0); await flush();
+    const status = { playbackId: context.playbackId, audioStats: 'FLAC 44.1kHz 16bit 543kbps', changed: ['audioStats'] };
+    players[0].emit('status', status);
+    assert.equal(sent.at(-1).name, 'audiostats'); assert.equal(sent.at(-1).data, status.audioStats);
+    const count = sent.length;
+    players[0].emit('status', { ...status, playbackId: context.playbackId - 1 });
+    assert.equal(sent.length, count);
+    players[0].emit('status', { ...status, audioStats: '' });
+    assert.equal(sent.at(-1).name, 'audiostats'); assert.equal(sent.at(-1).data, '');
+});
+
+test('LMS replays stats after track selection and playlist row rebuilds even for identical formats', async () => {
+    const { context, socket, players, sent } = await server({ RANDY_PLAYER_BACKEND: 'lms' });
+    const player = players[0], audioStats = 'MP3 RADIO 256kbps';
+    player.getStatus = async () => ({ playbackId: context.playbackId, audioStats });
+    player.loadAndPlay = async (song, { playbackId }) => {
+        // LMS can publish its only changed-stats event before loadAndPlay resolves.
+        player.emit('status', { playbackId, audioStats, changed: ['audioStats'] });
+    };
+    for (const index of [0, 1, 0]) {
+        const start = sent.length;
+        socket.emit('playsong', index); await flush();
+        const events = sent.slice(start);
+        const playlistIndex = events.findLastIndex(event => event.name === 'playlist');
+        assert.ok(playlistIndex >= 0);
+        assert.equal(events.at(-1).name, 'audiostats');
+        assert.equal(events.at(-1).data, audioStats);
+        assert.ok(events.findLastIndex(event => event.name === 'audiostats') > playlistIndex);
+    }
+    context.emitplaylist(); await flush();
+    assert.equal(sent.at(-2).name, 'playlist');
+    assert.equal(sent.at(-1).name, 'audiostats');
+});
+
+test('LMS replays cached audio stats to a newly connected browser', async () => {
+    const { context, socket, players, io } = await server({ RANDY_PLAYER_BACKEND: 'lms' });
+    socket.emit('playsong', 0); await flush();
+    players[0].getStatus = async () => ({ playbackId: context.playbackId, audioStats: 'AAC 48kHz' });
+    const browser = new EventEmitter(), events = [];
+    for (const name of ['playlist', 'audiostats']) browser.on(name, data => events.push({ name, data }));
+    io.emit('connection', browser); await flush();
+    assert.deepEqual(events.map(event => event.name), ['playlist', 'audiostats']);
+    assert.equal(events[1].data, 'AAC 48kHz');
+});
+
+test('delayed LMS audio stats replay cannot overwrite a newer selection', async () => {
+    const { context, socket, players, sent } = await server({ RANDY_PLAYER_BACKEND: 'lms' });
+    socket.emit('playsong', 0); await flush();
+    const oldId = context.playbackId;
+    let reply;
+    players[0].getStatus = () => new Promise(resolve => { reply = resolve; });
+    context.emitplaylist();
+    players[0].getStatus = async () => ({ playbackId: context.playbackId, audioStats: 'FLAC 96kHz' });
+    socket.emit('playsong', 1); await flush();
+    const count = sent.length;
+    reply({ playbackId: oldId, audioStats: 'OLD' }); await flush();
+    assert.equal(sent.length, count);
+    assert.equal(sent.at(-1).data, 'FLAC 96kHz');
+});
+
 test('delayed LMS metadata read cannot publish nowplaying after replacement', async () => {
     const { socket, players, sent } = await server({ RANDY_PLAYER_BACKEND: 'lms' });
     let finish; players[0].getStatus = () => new Promise(resolve => { finish = resolve; });
@@ -242,4 +335,43 @@ test('delayed LMS metadata read cannot publish nowplaying after replacement', as
     socket.emit('playsong', 1); await flush(); const count = sent.length;
     finish({ radioMetadata: { title: 'Stale title', stationName: 'Stale station' } }); await flush();
     assert.equal(sent.length, count);
+});
+
+test('LMS unavailable at startup still initializes Randy and submits the selected startup request', async () => {
+    const { players, playlist, context, sent } = await server({ RANDY_PLAYER_BACKEND: 'lms' }, {
+        playonstart: 'true', status: { connected: false, connectionState: 'lms-unavailable' }
+    });
+    const player = players[0];
+    assert.equal(player.calls.filter(c => c[0] === 'loadAndPlay').length, 1);
+    assert.equal(playlist.nextCalls, 0);
+    player.emit('connection-change', { state: 'waiting-for-player', connected: false, playbackId: context.playbackId });
+    assert.equal(sent.at(-1).name, 'problem');
+    assert.ok(sent.some(e => e.name === 'player-connection' && e.data.state === 'waiting-for-player'));
+    player.emit('connection-change', { state: 'connected', connected: true, playbackId: context.playbackId });
+    assert.equal(sent.at(-1).data.state, 'connected');
+    assert.equal(player.calls.filter(c => c[0] === 'loadAndPlay').length, 1);
+    assert.equal(playlist.nextCalls, 0);
+});
+
+test('stale LMS connection events cannot affect a replacement track or player', async () => {
+    const { socket, players, context, sent, playlist } = await server({ RANDY_PLAYER_BACKEND: 'lms' });
+    socket.emit('playsong', 0); await flush(); const oldId = context.playbackId;
+    socket.emit('playsong', 1); await flush(); const before = sent.length;
+    players[0].emit('connection-change', { state: 'lms-unavailable', connected: false, playbackId: oldId });
+    assert.equal(sent.length, before);
+    context.restartplayer(); await flush(); const after = sent.length;
+    players[0].emit('connection-change', { state: 'waiting-for-player', connected: false, playbackId: context.playbackId });
+    assert.equal(sent.length, after); assert.equal(playlist.nextCalls, 0);
+});
+
+test('LMS Play before the first load selects Randy current song even while disconnected', async () => {
+    const { socket, players, playlist, songs } = await server({ RANDY_PLAYER_BACKEND: 'lms' }, {
+        status: { connected: false, connectionState: 'lms-unavailable' }
+    });
+    socket.emit('play'); await flush();
+    const load = players[0].calls.find(c => c[0] === 'loadAndPlay');
+    assert.equal(load[1], songs[0]); assert.equal(playlist.nextCalls, 0);
+    socket.emit('play'); await flush();
+    assert.equal(players[0].calls.filter(c => c[0] === 'loadAndPlay').length, 1);
+    assert.ok(players[0].calls.some(c => c[0] === 'play'));
 });
