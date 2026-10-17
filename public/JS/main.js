@@ -117,36 +117,37 @@ $('#search-bar').keyup(debounce(async function(event) {
                  if (res.albums.length > 0){
                     hasresults = true;
                      templist.searchalbums = [];
-                     ht += "<h3>Albums</h3>";
+                     ht += "<h3>Local albums</h3>";
                      for (i in res.albums){
                          templist.searchalbums.push(res.albums[i].album);
-                         ht += "<div class='search-result'>";
-                         ht += "<div class='search-result-name' onclick='showAlbum(\"searchalbums\",\""+i+"\")'>";
-                         ht += "<span class='clickablelink'>" + res.albums[i].name + "</span>"; 
-                         ht += "<span class='search-result-path'>" + res.albums[i].albumpath + "</span>";
-                         ht += "</div>"; 
-                         ht += "<div class='search-result-options'>" + songoptions('searchalbums',i) + "</div>";
-                         ht += "</div>";
+                         ht += "<div class='local-album-slot' data-index='" + i + "'></div>";
                      }
                  }
 
                  if (res.files.length > 0){
                     hasresults = true;
                      templist.searchsongs = [];
-                     ht += "<h3>Songs</h3>";
+                     ht += "<h3>Local songs</h3>";
                      for (i in res.files){
                         templist.searchsongs.push(res.files[i].path);
-                        ht += "<div class='search-result'>";
-                        ht += "<div class='search-result-name clickablelink' onclick='doSongOption(\"playnow\",\"searchsongs\",\""+i+"\")'>" + res.files[i].name + "</div>"; 
-                        ht += "<div class='search-result-options'>" + songoptions('searchsongs',i) + "</div>";
-                        ht += "</div>";
+                        ht += "<div class='local-track-slot' data-index='" + i + "'></div>";
                      }
                  }
                  if (!hasresults){
                     ht += "<h3>No results...</h3>";
                  }
                 
-                $('#local-search-results').html('<h3>LOCAL</h3>' + ht);
+                $('#local-search-results').html(ht);
+                ['album','track'].forEach(function(kind){
+                    $('#local-search-results .local-'+kind+'-slot').each(function(){
+                        var index=Number(this.dataset.index), item=(kind==='track'?res.files:res.albums)[index];
+                        var list=kind==='track'?'searchsongs':'searchalbums';
+                        var data={source:'local',title:item.title || item.name,artist:item.artist,album:item.albumName,artwork:item.albumart};
+                        var actions={play:function(){doSongOption('playnow',list,index);},add:function(){doSongOption('addtolist',list,index);},sticky:function(){doSongOption('stick',list,index);}};
+                        if(kind==='album')actions.open=function(){showAlbum(list,index);};
+                        $(this).replaceWith(randyUI.row(data,actions));
+                    });
+                });
                 $('#search').removeClass('loading');
                 browsepane('search-results');
             });
@@ -336,17 +337,21 @@ socket.on('pos', function(obj){
 });
 
 socket.on('nowplaying', function(obj){
+    spotifyUI.updateNowPlaying(obj);
     console.log("now playing: " + obj.title + ", album art - " + JSON.stringify(obj.albumart));
     //console.log("album: " + obj.album);
     document.title = obj.title;
-    var al = (obj.source === 'spotify' || obj.source === 'spotify_connect') ? (obj.albumart || '/IMG/Record.png') : encodeURI(obj.albumart);
+    var al = (obj.source === 'spotify' || obj.source === 'spotify_connect') ? randyUI.coverUrl(obj.albumart,640) : encodeURI(obj.albumart);
     var sign = "";
     if (!ValidAAURL(al)){
         al = 'https://api.dicebear.com/9.x/notionists/svg?seed='+obj.album;
         sign = '<span>No Album Cover...?<br/>Randy got you covered! (<a href="https://www.dicebear.com/" target="_blank">https://www.dicebear.com/</a>)</span>';
     }
     if (cursong != null){
-        cursong.find(".onesong-tit")[(obj.source === 'spotify' || obj.source === 'spotify_connect') ? 'text' : 'html'](obj.title);
+        var titleText=cursong.find('.randy-title-text');
+        if(titleText.length)titleText.text(obj.title);
+        else cursong.find(".onesong-tit")[(obj.source === 'spotify' || obj.source === 'spotify_connect') ? 'text' : 'html'](obj.title);
+        cursong.find('.onesong-tit').attr('title',obj.title);
         if ((obj.source === 'spotify' || obj.source === 'spotify_connect')) cursong.find('.spotify-cover').attr('src', al);
         if (obj.hasOwnProperty('album')){
             cursong.find(".onesong-artist")[(obj.source === 'spotify' || obj.source === 'spotify_connect') ? 'text' : 'html'](obj.album);
@@ -391,12 +396,11 @@ socket.on('playlist', function(objj){
             } 
         }
        var ns = "<div onclick='playsong("+i+");' class='onesong " + plitemclass + "' id='song_" + i + "' data-id='" + i + "'>";
-       if (obj[i].type === 'spotify') {
-           ns += '<img class="spotify-cover" alt="Spotify" src="' + spotifyUI.escape(obj[i].albumart || '/IMG/Record.png') + '">';
-           tit = spotifyUI.escape(tit); artistalbum = spotifyUI.escape(artistalbum);
+       if (obj[i].type === 'spotify' || obj[i].type === 'file') {
+           tit = randyUI.escape(tit); artistalbum = randyUI.escape(artistalbum);
        }
        ns += "<div class='onesong-details'>";
-       ns += "<div class='onesong-tit' title='" + tit + "'>" + tit + "</div>";
+       ns += "<div class='onesong-tit' title='" + tit + "'>" + ((obj[i].type==='spotify'||obj[i].type==='file') ? randyUI.sourceIcon(obj[i].type)+'<span class="randy-title-text">'+tit+'</span>' : tit) + "</div>";
        ns += "<div class='onesong-artist' title='" + artistalbum + "'>" + artistalbum + "</div>";
        if (objj.playing == i){
         ns += "<div class='onesong-info'>  -  </div>";
@@ -466,7 +470,7 @@ function browsepane(mode){
                 ht += "<img class='clickable' onclick='browsepane(\"init\");' src='IMG/Arrow_Right_MD.svg'/>";
                  if (res.albums.length > 0){
                      templist.allalbums = [];
-                     //ht += "<h3>Albums</h3>";
+                     //ht += "<h3>Local albums</h3>";
                      var lastalb = "";
                      for (i in res.albums){
                          var albarr = res.albums[i].albumpath.split("/");
@@ -641,7 +645,6 @@ function browsepane(mode){
                     }
                  }
                 $('#devices').html(ht); 
-                $('#replayselect').val(res.cursettings.replayGain);
                 var playonstart = res.cursettings.playonstart;
                 if (playonstart == "true" || playonstart == null){
                     $('#playonstart').prop("checked", true);
@@ -704,8 +707,12 @@ $("#dial").knob({
     'release' : function (v) { 
         if (!seekbarreleased){
             var lenel = cursong.find('.onesong-len');
-            var tlen = parseInt(lenel.attr("len"));
-            socket.emit('seek', Math.round(v/100*tlen));
+            var tlen = Number(lenel.attr("len"));
+            if (Number.isFinite(tlen) && tlen > 0 && Number.isFinite(Number(v))) {
+                // Keep a drag to the end inside the track; do not accidentally
+                // trigger SpotOn/LMS's next-track path by seeking past EOF.
+                socket.emit('seek', Math.min(tlen - 0.01, Math.max(0, Math.round(v/100*tlen))));
+            }
             seekbarreleased = true;
             console.log('knob at ' + v);
         }
@@ -810,23 +817,13 @@ function fixBroken(ele,list,i,name){
 
 //song options//
 function songoptions(obj,i){
-    var ht = "<div class='song-options'>";
-    if (obj.indexOf("album") != -1 || obj.indexOf("search") != -1){
-        ht += "<img class='clickable' title='Play' onclick='doSongOption(\"playnow\",\""+obj+"\",\""+i+"\")' src='IMG/Play.svg'/>";
-    }
-    ht += "<img class='clickable' title='Add to Playlist' onclick='doSongOption(\"addtolist\",\""+obj+"\",\""+i+"\")' src='IMG/First_Aid.svg'/>";
-    
-    //add bookmark to non sticky
-    if (obj.indexOf("stickies") == -1){
-        ht += "<img class='clickable' title='Add to Stickies' onclick='doSongOption(\"stick\",\""+obj+"\",\""+i+"\")' src='IMG/Bookmark.svg'/>";
-    }
-    //add delete to stickies
-    if (obj.indexOf("stickies") != -1){
-        ht += "<img class='clickable' title='Remove' onclick='doSongOption(\"unstick\",\""+obj+"\",\""+i+"\")' src='IMG/Trash_Full.svg'/>";
-        //ht += "<img class='clickable' title='Add to Stickies' onclick='doSongOption(\"stick\",\""+obj+"\",\""+i+"\")' src='IMG/pencil-line.svg'/>";
-    }
-    ht += "</div>";
-    return ht;
+    var actions=[];
+    if(obj.indexOf('album')!==-1||obj.indexOf('search')!==-1)actions.push(['play','Play','playnow']);
+    actions.push(['add','Add to queue','addtolist']);
+    actions.push(obj.indexOf('stickies')===-1?['sticky','Sticky','stick']:['remove','Remove','unstick']);
+    return '<div class="song-options randy-item-actions">'+actions.map(function(action){
+        return '<button type="button" class="randy-action" title="'+action[1]+'" aria-label="'+action[1]+'" onclick="doSongOption(\''+action[2]+'\',\''+obj+'\',\''+i+'\')">'+randyUI.icon(action[0])+'</button>';
+    }).join('')+'</div>';
 }
 
 function doSongOption(op,opt,i){

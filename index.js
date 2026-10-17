@@ -33,6 +33,8 @@ var audiodevicelist = [];
 var playerBackend = process.env.RANDY_PLAYER_BACKEND || 'mpv';
 var spotify = require('./lib/spotify')({serverUrl:process.env.LMS_SERVER_URL, playerId:process.env.LMS_PLAYER_ID,
     getSettings:() => playlist.getSettings(), setSetting:(key, value) => playlist.setSetting(key, value)});
+var audioOutput = new (require('./lib/squeezelite-output').Output)({playerId:process.env.LMS_PLAYER_ID,
+    getSettings:()=>playlist.getSettings(),setSetting:(key,value)=>playlist.setSetting(key,value)});
 
 //express parsing support
 app.use(bodyParser.json()); // to support JSON-encoded bodies
@@ -44,6 +46,15 @@ app.use(bodyParser.urlencoded({
 
 app.use("/", express.static(__dirname + "/public"));
 require('./lib/spotify-routes')(app, {spotify, playlist, backend:playerBackend, playSong:playsong, getPlaybackId:() => playbackId});
+app.post('/audio-output/list',async function(req,res){
+    if(playerBackend!=='lms')return res.json({enabled:false});
+    res.json({enabled:true,...await audioOutput.list()});
+});
+app.post('/audio-output/change',async function(req,res){
+    if(playerBackend!=='lms')return res.status(400).json({error:'Squeezelite output selection requires LMS'});
+    try{res.json(await audioOutput.change(req.body.id));}
+    catch(error){res.status(400).json({error:error.message});}
+});
 spotify.ownership.on('change', function(event){
     if (playerBackend !== 'lms') return;
     if (event.state === 'spotify_connect') ++playbackId;
@@ -460,6 +471,7 @@ function createNewPlayer(){
                     io.sockets.emit('pos', status.position);
                     break;
                 case 'duration':
+                case 'seekable':
                     if (status.seekable) io.sockets.emit('duration', status.duration);
                     break;
                 case 'volume':

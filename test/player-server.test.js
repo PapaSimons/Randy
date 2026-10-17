@@ -59,6 +59,7 @@ async function server(env = {}, options = {}) {
         './lib/player': createPlayer,
         './lib/spotify-item': require('../lib/spotify-item'),
         './lib/spotify': require('../lib/spotify'),
+        './lib/squeezelite-output': require('../lib/squeezelite-output'),
         './lib/spotify-routes': require('../lib/spotify-routes'),
         metaget: {},
         child_process: { spawnSync: () => {} },
@@ -416,6 +417,12 @@ test('LMS playlist rebuild replays duration and position after the row is recrea
     const index=f.sent.findLastIndex(e=>e.name==='playlist');
     assert.ok(f.sent.findLastIndex(e=>e.name==='duration'&&e.data===155.6)>index);
     assert.ok(f.sent.findLastIndex(e=>e.name==='pos'&&e.data===12.5)>index);
+});
+test('late seekability publishes existing duration so Spotify seek controls initialize',async()=>{
+    const f=await server({RANDY_PLAYER_BACKEND:'lms'});
+    f.socket.emit('playsong',0);await flush();
+    f.players[0].emit('status',{playbackId:f.context.playbackId,seekable:true,duration:155.6,changed:['seekable']});
+    assert.ok(f.sent.some(e=>e.name==='duration'&&e.data===155.6));
 });
 test('saved Spotify metadata and artwork are usable before LMS enriches the current track', async () => {
     const f=await server({RANDY_PLAYER_BACKEND:'lms'});

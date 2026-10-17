@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key><string>org.randy.squeezelite</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Applications/Squeezelite.app/Contents/MacOS/Squeezelite</string>
+        <string>-n</string><string>Randy</string>
+        <string>-s</string><string>127.0.0.1</string>
+        <string>-m</string><string>02:52:41:4e:44:59</string>
+        <string>-o</string><string>default</string>
+    </array>
+    <key>RunAtLoad</key><true/>
+    <key>KeepAlive</key><true/>
+    <key>ThrottleInterval</key><integer>10</integer>
+    <key>StandardOutPath</key><string>__LOG_DIR__/squeezelite.out.log</string>
+    <key>StandardErrorPath</key><string>__LOG_DIR__/squeezelite.err.log</string>
+</dict>
+</plist>

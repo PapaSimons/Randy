@@ -1,0 +1,40 @@
+--- SpotOn/Connect.pm
++++ SpotOn/Connect.pm
+@@ -273,6 +273,18 @@
+     my $client = $request->client();
+     return if !defined $client;
+     $client = $client->master;
++
++    # If Connect flag was set but we're no longer in a Connect URL, clear state
++    if ($_activeConnectPlayer && $_activeConnectPlayer eq $client->id) {
++        my $song = $client->playingSong();
++        my $url  = $song ? ($song->track->url || $song->streamUrl || '') : '';
++        unless ($url =~ m{spoton://connect-}) {
++            main::INFOLOG && $log->is_info && $log->info(
++                "New song without Connect URL — clearing active Connect state for " . $client->id
++            );
++            $_activeConnectPlayer = undef;
++        }
++    }
+ 
+     # CON-17: Apply stored progress for Connect sessions
+     if (__PACKAGE__->isSpotifyConnect($client)) {
+@@ -301,17 +313,7 @@
+         return;
+     }
+ 
+-    # If Connect flag was set but we're no longer in a Connect URL, clear state
+-    if ($_activeConnectPlayer && $_activeConnectPlayer eq $client->id) {
+-        my $song = $client->playingSong();
+-        my $url  = $song ? ($song->streamUrl || '') : '';
+-        unless ($url =~ m{spoton://connect-}) {
+-            main::INFOLOG && $log->is_info && $log->info(
+-                "New song without Connect URL — clearing active Connect state for " . $client->id
+-            );
+-            $_activeConnectPlayer = undef;
+-        }
+-    }
++
+ }
+ 
+ # _onPause($request)
