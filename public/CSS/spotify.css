@@ -31,7 +31,7 @@
 #audio-output-save { padding:2px 8px; }
 #audio-output-select { max-width:100%; padding:2px 30px 2px 8px; margin:10px 5px 10px 0; appearance:none; background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23555' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center; }
 #audio-output-message { font-size:12px; opacity:.7; }
-@media (max-width:600px) { .randy-item { gap:6px; } .randy-action { padding:4px; } .randy-item .randy-source { display:none; } }
+@media (max-width:600px) { .randy-item { gap:6px; } .randy-action { padding:4px; } .randy-item-title .randy-source { display:inline-flex; } }
 .settings-card { gap: 12px; }
 .audio-output-card { flex-wrap: wrap; }
 .audio-output-card .device-main { min-width: 0; overflow-wrap: anywhere; }
@@ -130,3 +130,5 @@
 
 #spotify-native-settings .spotify-setting-block:last-of-type { padding-bottom:0; }
 #spotify-native-settings .spotify-setting-block:last-of-type .spotify-setting-description > p:last-child { margin-bottom:0; }
+
+.randy-item-title .randy-source { margin-right:5px; }

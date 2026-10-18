@@ -37,7 +37,7 @@
                     <button type='button' class='browse-top-back-icon clickable randy-icon-button' data-randy-icon='close' aria-label='Close browser' title='Close browser'></button>
                     <div class="search-shell">
                     <div id="search">
-                      <input id="search-bar" placeholder="Search weburls or keywords.." type="search" autocomplete="off"/>
+                      <input id="search-bar" placeholder="Search music or a stream URL" type="search" autocomplete="off"/>
                       <button id="search-close" type="button" data-randy-icon="close" aria-label="Close search" title="Close search" hidden></button>
                       <button id="button" data-randy-icon="search" aria-label="Search" title="Search"></button>
                       <div class="spinner"><span data-randy-icon="spinner" aria-hidden="true"></span></div>
@@ -76,8 +76,7 @@
                         <div class="settings-intro">
                             Hey there, Welcome to Randy!
                             <br/><br/>
-                            Start by setting up your music source!<br/>
-                            You can also try the magic searchbar with keywords, streaming site urls such as youtube, soundcloud, mixcloud, web radio urls and more...<br/><br/>
+                            Start by setting up your music source or try the magic search bar for music, radio stations. You can also paste a direct audio or internet radio stream URL to start listening.<br/><br/>
                             If you like Randy you can support the project <a href="https://www.buymeacoffee.com/randyplayer" target="_blank">here!</a> 🫰<br/><br/>
                         </div>
                         <h3>Music Folders</h3>
@@ -190,7 +189,7 @@
                 <div id="top-icon-menu-volume">
                   <input type="range" class="slider" value="0" id="volume-slider" onchange="changeVolume(this.value)">
                 </div>
-                <div id="top-text"><img class="clickable" src="IMG/Randy.png"/></div>
+                <div id="top-text"><img class="clickable" src="IMG/Randy.png" title="I'm feeling Randy.."/></div>
             </div>
             <div id="playlist-pane-songlist">
               <div id="spotify-connect-toast" role="status" hidden></div>

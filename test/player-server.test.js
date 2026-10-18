@@ -62,7 +62,7 @@ async function server(env = {}, options = {}) {
         './lib/spotify': require('../lib/spotify'),
         './lib/squeezelite-output': require('../lib/squeezelite-output'),
         './lib/spotify-routes': require('../lib/spotify-routes'),
-        metaget: {},
+        './lib/direct-audio': { ...require('../lib/direct-audio'), describe: value => require('../lib/direct-audio').describe(value, {fetch:options.streamFetch}) },
         child_process: { spawnSync: () => {} },
         fs: { existsSync: () => !!options.musicfolders },
         'node-disk-info': { getDiskInfo: () => Promise.resolve([]) },
@@ -500,4 +500,19 @@ test('music-folder startup loads the saved queue item exactly once with restart 
     const f=await server({RANDY_PLAYER_BACKEND:'lms'},{playonstart:'true',musicfolders:['/music'],playing:1});
     await flush();const loads=f.players[0].calls.filter(c=>c[0]==='loadAndPlay');
     assert.equal(loads.length,1);assert.equal(loads[0][1],f.songs[1]);
+});
+
+test('URL field accepts direct audio and rejects webpage links with safe copy; relay routes are absent', async () => {
+    const f = await server({RANDY_PLAYER_BACKEND:'lms'}, {streamFetch:async () => ({ok:true,headers:new Headers({'content-type':'text/html'}),body:{cancel:async () => {}}})});
+    const expected = require('../lib/direct-audio').unsupportedMessage;
+    for (const [url, success] of [['https://radio.example/live.mp3',true],['https://youtube.com/watch?v=test',false],['https://soundcloud.com/artist/song',false],['https://example.com/page',false]]) {
+        let result, code = 200;
+        const res = {json:value => {result = value;},status:value => {code = value;return res;}};
+        await f.routes.get('/getURLMeta')({body:{url}}, res);
+        assert.equal(result.success, success);
+        assert.equal(code, success ? 200 : 400);
+        if (!success) {assert.equal(result.error, expected);assert.doesNotMatch(result.error, /LMS|yt-dlp|stack/);}
+    }
+    assert.equal(f.routes.has('/web-stream/:token'), false);
+    assert.equal(f.routes.has('/web-artwork'), false);
 });

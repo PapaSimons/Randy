@@ -37,7 +37,7 @@ test('source icons are shown only for Spotify',()=>{
  const local=ui.row({source:'local',title:'Local'},{});assert.equal(local.find('.randy-source').length,0);
 });
 
-test('Spotify album search row offers Play/Add while its title still opens the album',()=>{
+test('Spotify album search row offers Play/Add without bookmarks while its title still opens the album',()=>{
  const f=fixture(),calls=[];
  const source=fs.readFileSync(require.resolve('../public/JS/spotify.js'),'utf8');
  f.context.action=(item,name)=>calls.push(name);f.context.open=item=>calls.push('open');
@@ -93,4 +93,24 @@ test('Connect works when browser audio is unavailable or has not been unlocked',
  vm.runInContext(fs.readFileSync(require.resolve('../public/JS/spotify.js'),'utf8'),f.context);
  assert.doesNotThrow(()=>f.context.spotifyUI.setOwnership({state:'spotify_connect',playbackState:'playing'}));
  assert.equal(f.base('#spotify-connect-toast').prop('hidden'),false);
+});
+
+test('Spotify search source icon is inside the title and outside actions',()=>{
+ const {ui}=fixture();const row=ui.row({source:'spotify',title:'Album'}, {play(){}});
+ assert.equal(row.find('.randy-item-title .randy-source').length,1);
+ assert.equal(row.children('.randy-source').length,0);
+ assert.equal(row.find('.randy-item-actions .randy-source').length,0);
+ assert.equal(row.find('.randy-item-title').text(),'Album');
+});
+
+test('saved album bookmark actions use Spotify while removal retains the existing bookmark path',()=>{
+ const source=fs.readFileSync(require.resolve('../public/JS/main.js'),'utf8');const calls=[];
+ const album={type:'spotify-album',songfile:'spoton://album:3M0zi8iD2KRzY71XcGFUpE'};
+ const context=vm.createContext({templist:{bookmarks:[album]},console:{log(){}},
+  spotifyUI:{albumAction:(item,action)=>calls.push(['spotify',action,item])},socket:{emit:(op,item)=>calls.push(['socket',op,item])},
+  $:()=>({toggleClass(){}}),showToast(){},browsepane(){},curbrowserpanemode:'stickies'});
+ vm.runInContext(source.slice(source.indexOf('function doSongOption('),source.indexOf('////utils////')),context);
+ context.doSongOption('playnow','bookmarks',0);context.doSongOption('addtolist','bookmarks',0);context.doSongOption('unstick','bookmarks',0);
+ assert.deepEqual(calls.map(c=>c.slice(0,2)),[['spotify','play'],['spotify','add'],['socket','unstick']]);
+ assert.ok(calls.every(c=>c[2]===album));
 });

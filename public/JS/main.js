@@ -86,8 +86,8 @@ $('#search-bar').keyup(debounce(async function(event) {
     var resetSearchScroll = searchQuery !== browseSearchQuery;
     browseSearchQuery = searchQuery;
     spotifyUI.search(searchQuery);
-    if (ValidURL($('#search-bar').val())){
-        $('#browse-search-url').fadeOut();
+    if (/^https?:\/\//i.test(searchQuery)){
+        $('#browse-search-url').text('Checking audio stream…').show();
         $('#search').addClass('loading');
         api.getURLMeta($('#search-bar').val()).then(function(meta){
            if (searchGeneration !== localSearchGeneration)return;
@@ -96,21 +96,25 @@ $('#search-bar').keyup(debounce(async function(event) {
                console.log(JSON.stringify(meta));
                 var ht = "<div class='browse-search-x' onclick='$(\"#browse-search-url\").hide();'>" + randyUI.icon('close','Close') + "</div>";
                 ht += "<div class='browse-search-img'>";
-                ht += "<img src='" + meta.img + "'/>";
+                ht += "<img src='" + randyUI.escape(meta.img) + "'/>";
                 ht += "</div>";
                 ht += "<div class='browse-search-tit'>";
-                ht += "<span class='tit'>" + meta.title + "</span>";
+                ht += "<span class='tit'>" + randyUI.escape(meta.title) + "</span>";
                 ht += "</br>";
-                ht += "<span class='desc'>" + meta.description + "</span>";
+                ht += "<span class='desc'>" + randyUI.escape(meta.description) + "</span>";
                 ht += "</br>";
                 ht += songoptions('search',0);
                 ht += "</div>";
                 $('#browse-search-url').html(ht); 
            } else {
-               $('#browse-search-url').html("URL not found, try another url!"); 
+               $('#browse-search-url').text(meta.error || 'Could not check this audio stream.');
            }
            $('#browse-search-url').fadeIn();
            $('#search').removeClass('loading');
+        }).fail(function(response){
+            if (searchGeneration !== localSearchGeneration) return;
+            $('#browse-search-url').text(response.responseJSON && response.responseJSON.error || 'Could not check this audio stream.').show();
+            $('#search').removeClass('loading');
         });
      } else {
          if ($('#search-bar').val().length < 2){
@@ -494,7 +498,7 @@ function browsepane(mode, options){
                      for (i in res){
                          templist.allstickies.push(res[i].path);
                          ht += "<div class='search-result'>";
-                         ht += "<div class='search-result-name clickablelink' onclick='doSongOption(\"playnow\",\"allstickies\",\""+i+"\")'>" + (res[i].source === 'spotify' ? '<img class="spotify-cover" alt="Spotify" src="' + spotifyUI.escape(res[i].albumart) + '">' + spotifyUI.escape(res[i].name) : res[i].name) + "</div>";
+                         ht += "<div class='search-result-name clickablelink' onclick='doSongOption(\"playnow\",\"allstickies\",\""+i+"\")'>" + (res[i].source === 'spotify' ? randyUI.sourceIcon('spotify') + spotifyUI.escape(res[i].name) : res[i].name) + "</div>";
                          ht += "<div class='search-result-options'>" + songoptions('allstickies',i) + "</div>";
                          ht += "</div>";
                      }
@@ -722,7 +726,7 @@ function populateStickies(ele, lim){
              for (i in res){
                  templist.initstickies.push(res[i].path);
                  ht += "<div class='search-result'>";
-                 ht += "<div class='search-result-name clickablelink' onclick='doSongOption(\"playnow\",\"initstickies\",\""+i+"\")'>" + (res[i].source === 'spotify' ? '<img class="spotify-cover" alt="Spotify" src="' + spotifyUI.escape(res[i].albumart) + '">' + spotifyUI.escape(res[i].name) : res[i].name) + "</div>";
+                 ht += "<div class='search-result-name clickablelink' onclick='doSongOption(\"playnow\",\"initstickies\",\""+i+"\")'>" + (res[i].source === 'spotify' ? randyUI.sourceIcon('spotify') + spotifyUI.escape(res[i].name) : res[i].name) + "</div>";
                  ht += "<div class='search-result-options'>" + songoptions('initstickies',i) + "</div>";
                  ht += "</div>";
              }
@@ -870,7 +874,9 @@ function songoptions(obj,i){
 
 function doSongOption(op,opt,i){
     console.log("emitting - " + op + " , urls: " + templist[opt][i]);
-    socket.emit(op,templist[opt][i]);
+    var item=templist[opt][i];
+    if(item && item.type==='spotify-album' && (op==='playnow' || op==='addtolist')) spotifyUI.albumAction(item,op==='playnow'?'play':'add');
+    else socket.emit(op,item);
     //on mobile go back to playlist
     if (op == "playnow"){
         $('#browse-pane').toggleClass('mobilehideme');
@@ -931,3 +937,5 @@ function Bounce(ele) {
 $('[data-randy-icon][role=button]').on('keydown', function(event) {
     if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); $(this).trigger('click'); }
 });
+
+socket.on('web-problem',function(event){showToast(randyUI.escape(event.message));});

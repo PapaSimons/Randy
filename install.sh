@@ -60,13 +60,6 @@ else
 fi
 
 echo "-------------------------------------------"
-echo "######>>> getting latest yt-dlp"
-echo "-------------------------------------------"
-
-wget https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -O /usr/local/bin/yt-dlp
-chmod a+rx /usr/local/bin/yt-dlp
-
-echo "-------------------------------------------"
 echo "######>>> Download the latest release of Randy"
 echo "-------------------------------------------"
 

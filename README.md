@@ -46,9 +46,9 @@ Randy is a minimalist music streamer and player for raspberry pi, linux and maco
 <img width="1103" alt="image" src="https://user-images.githubusercontent.com/344467/236752516-34a21b4c-8e5e-47d3-b883-3935d08ccf0f.png">
 
 
-### Play anything
+### Local music and radio
 
-Randy can play web radio, podcasts, many kinds of music streaming sites such as soundcloud, mixcloud and pretty much all music file types.
+Randy can play local music files, direct web audio, and internet radio stream URLs. General webpage and media-service links are not supported.
 
 ### Always playing something
 
@@ -64,7 +64,7 @@ Sound quality is most important, I build my own amplifiers and speakers with the
 I am currently building Randy with RPI, SBC and thin clients in mind and maybe as an desktop app later for linux and macos if there is demand.
 
 This will probably be the first non-MPD RPI streamer and very minimalistic at this stage.
-Instead of [MPD](https://www.musicpd.org/) I am using [MPV](https://mpv.io/) which is a beast of a video player, but has all the good stuff to put out amazing sound quality as well. On top of that, it has a very efficient IPC connection and a direct pipe to yt-dlp which makes it easy to play just about anything off the web or your filesystems.
+Instead of [MPD](https://www.musicpd.org/) I am using [MPV](https://mpv.io/) which is a beast of a video player, but has all the good stuff to put out amazing sound quality as well. It supports local music files and direct web audio and internet radio stream URLs. Webpage links such as YouTube and SoundCloud pages are not currently supported.
 
 ### Collaboration
 

@@ -65,13 +65,13 @@ async function fixture(t, options = {}) {
 const song = { songfile: '/music/a.flac' };
 const flush = () => new Promise(resolve => setImmediate(resolve));
 
-test('MPV arguments retain yt-dlp, disabled ReplayGain, device selection and Linux ALSA', async t => {
+test('MPV arguments disable webpage resolution and retain disabled ReplayGain, device selection and Linux ALSA', async t => {
     const mac = await fixture(t, { platform: 'darwin', audioOutputDevice: 'coreaudio/device' });
     assert.deepEqual(mac.lifecycle.args, [
         '--no-config', '--af-clr', '--vf-clr', '--vid=no', '--no-video',
-        'script-opts=ytdl_hook-ytdl_path=yt-dlp', '--audio-display=no',
+        '--ytdl=no', '--audio-display=no',
         '--no-initial-audio-sync', '--audio-format=float', '--audio-fallback-to-null=yes',
-        '--audio-device=coreaudio/device', '--replaygain=no', '--ytdl-format=bestaudio'
+        '--audio-device=coreaudio/device', '--replaygain=no'
     ]);
     const linux = await fixture(t, { platform: 'linux' });
     assert.deepEqual(linux.lifecycle.args.slice(-4), [

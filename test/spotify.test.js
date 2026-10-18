@@ -191,7 +191,7 @@ test('settings connect/manage URLs target SpotOn and have no tokens',async()=>{
 function playlistFixture() {
     const db={pdb:{playlist:[{type:'file',songfile:'/local.wav',tags:{common:{title:'Local'},format:{duration:60}}}]},sdb:{status:{playing:0,volume:35}},ldb:{stickylist:[]},odb:{settings:{musicfolders:null}}};
     function DB(file){this.data=db[path.basename(file,'.json')]||{};this.has=k=>k in this.data;this.get=k=>this.data[k];this.set=(k,v)=>this.data[k]=v;}
-    const modules={'simple-json-db':DB,'smart-observe':()=>{},'./spotify-item':media};
+    const modules={'simple-json-db':DB,'smart-observe':()=>{},'./spotify-item':media,'./direct-audio':require('../lib/direct-audio')};
     const context=vm.createContext({module:{exports:{}},__dirname:path.resolve(__dirname,'../lib'),console:{log(){}},Buffer,URL,
         require:name=>name in modules?modules[name]:require(name==='./radio-url-finder.js'?'../lib/radio-url-finder':name)});
     vm.runInContext(fs.readFileSync(path.resolve(__dirname,'../lib/playlist_utils.js'),'utf8'),context);
@@ -355,4 +355,47 @@ test('general search presents tracks albums and artists while retaining playlist
  assert.match(source,/\['tracks', 'albums', 'artists'\]\.forEach/);
  assert.doesNotMatch(source,/\['tracks', 'albums', 'artists', 'playlists'\]\.forEach/);
  const f=fixture();return f.client.search('Air').then(result=>assert.equal(result.playlists.length,1));
+});
+
+test('actual playlist accepts direct streams and rejects webpages without changing the queue', async () => {
+    const p = playlistFixture(); await p.initPlaylist(()=>{},()=>{},()=>{});
+    await p.addlast('https://radio.example/live.mp3');
+    assert.equal(p.getPlayList().at(-1).songfile, 'https://radio.example/live.mp3');
+    assert.equal(p.getPlayList().at(-1).type, 'stream');
+    const before = JSON.stringify(p.getPlayList());
+    for (const url of ['https://youtube.com/watch?v=test', 'https://soundcloud.com/artist/song']) {
+        await assert.rejects(p.addandplay(url), {message:require('../lib/direct-audio').unsupportedMessage});
+        assert.equal(JSON.stringify(p.getPlayList()), before);
+    }
+});
+
+test('album bookmark saves one stable album without enumerating or altering the queue', async () => {
+    const r=routes();const album=(await r.f.client.search('Air')).albums[0];
+    const response=await r.invoke('/spotify/queue',{action:'sticky',key:album.key});
+    assert.equal(response.code,200);assert.equal(response.value.count,1);
+    assert.equal(r.calls.length,1);assert.equal(r.calls[0].sticky.type,'spotify-album');
+    assert.equal(r.calls[0].sticky.songfile,album.uri);assert.equal(r.calls[0].sticky.title,album.title);
+    assert.equal('key' in r.calls[0].sticky,false);
+    assert.equal('params' in r.calls[0].sticky,false);
+});
+for(const action of ['play','add'])test('saved album '+action+' resolves after search handles have expired', async () => {
+    const r=routes();const album=(await r.f.client.search('Air')).albums[0];
+    const saved=r.f.client.albumBookmark(album.key);r.f.client.handles.clear();
+    const response=await r.invoke('/spotify/queue',{action,album:JSON.parse(JSON.stringify(saved))});
+    assert.equal(response.code,200);assert.equal(r.calls[0].mode,action==='play'?'replace':'append');
+    assert.equal(r.calls[0].items[0].songfile,uri);
+    assert.equal(r.calls.filter(c=>c.play).length,action==='play'?1:0);
+});
+test('album bookmarks persist, deduplicate and remove independently of track bookmarks', async () => {
+    const p=playlistFixture();await p.initPlaylist(()=>{},()=>{},()=>{});
+    const album=media.album({uri:'spoton://album:3M0zi8iD2KRzY71XcGFUpE',title:'Album',artist:'Artist',artwork:art,key:'temporary',password:'SECRET'});
+    await p.addtosticky(song());await p.addtosticky(album);await p.addtosticky(JSON.parse(JSON.stringify(album)));
+    assert.equal(p.getStickyList().length,2);assert.equal(p.getStickyList()[0].path.type,'spotify-album');
+    assert.doesNotMatch(JSON.stringify(p.getStickyList()),/temporary|SECRET/);
+    await p.removesticky(JSON.parse(JSON.stringify(album)));
+    assert.equal(p.getStickyList().length,1);assert.equal(p.getStickyList()[0].path.type,'spotify');
+});
+test('album bookmarks reject track identities and expired search handles', async () => {
+    assert.throws(()=>media.album({uri}),/album/);
+    const f=fixture();assert.throws(()=>f.client.albumBookmark('expired-key'),/expired/);
 });

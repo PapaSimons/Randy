@@ -32,7 +32,7 @@ var spotifyUI = (function () {
         });
     }
     function action(item, name) {
-        return request('queue', { action: name, song: item.song, key: item.song ? undefined : item.key })
+        return request('queue', { action: name, song: item.song, album: item.bookmark, key: item.song ? undefined : item.key })
             .then(function (r) { if (r.cancelled) return; message({ message: name === 'sticky' ? 'Added Spotify sticky' : 'Spotify: ' + r.count + ' track(s)' }); })
             .catch(message);
     }
@@ -208,6 +208,6 @@ var spotifyUI = (function () {
         refresh(); setInterval(refresh, 5000);
         if (typeof socket !== 'undefined') { socket.on('spotify-problem', message);socket.on('spotify-account-removed',accountRemoved); }
     });
-    return { setOwnership:setOwnership, updateNowPlaying:updateNowPlaying, useConnectTarget:useConnectTarget, search: search, invalidate: invalidate, closeBrowse:closeBrowse, accountRemoved:accountRemoved, cover: cover, refresh: refresh,
+    return { albumAction:function(album,name){return action({bookmark:album},name);}, setOwnership:setOwnership, updateNowPlaying:updateNowPlaying, useConnectTarget:useConnectTarget, search: search, invalidate: invalidate, closeBrowse:closeBrowse, accountRemoved:accountRemoved, cover: cover, refresh: refresh,
         escape: function (value) { return String(value || '').replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); } };
 }());

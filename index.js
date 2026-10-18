@@ -15,7 +15,7 @@ var bodyParser = require('body-parser');
 var playlist = require('./lib/playlist_utils.js');
 var createPlayer = require('./lib/player');
 var spotifyItem = require('./lib/spotify-item');
-var metaget = require("metaget");
+var directAudio = require('./lib/direct-audio');
 var cp = require('child_process');
 var fs = require("fs");
 //var drivelist = require('drivelist');
@@ -171,35 +171,13 @@ app.post('/setSetting', async function (req, res) {
     res.json({"success":200});
 });
 
-app.post('/getURLMeta', function (req, res) {
-    res.header("Access-Control-Allow-Origin", "http://localhost");
-    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
-    console.log('Checking audio stream for: ' + req.body.url);
-    playlist.checkAudioStream(req.body.url).then(function(rtn){
-        console.log('is it an audio stream? - ' + rtn);
-        if (rtn){
-            res.json({"success":true,
-                      "title":req.body.url,
-                      "description":'Audio Stream',
-                      "img":''});
-        } else {
-            console.log('Getting metadata for: ' + req.body.url);
-            metaget.fetch(req.body.url, function (err, meta_response) {
-                if(err){
-                    console.log("url metadata error: " + err);
-                    res.json({"success":false,"err":err,"results":null});
-                }else{
-                    console.log(meta_response);
-                    var meta = playlist.getBestMeta(meta_response, req.body.url);
-                    //return
-                    res.json({"success":true,
-                              "title":meta.title,
-                              "description":meta.description,
-                              "img":meta.image});
-                }
-            });
-        }
-    });
+app.post('/getURLMeta', async function (req, res) {
+    try {
+        const song = await directAudio.describe(req.body.url);
+        res.json({success:true, title:song.tags.common.title, description:'Audio Stream', img:''});
+    } catch {
+        res.status(400).json({success:false, error:directAudio.unsupportedMessage});
+    }
 });
 
 //IO
@@ -281,17 +259,17 @@ io.on('connection', function(socket){
       console.log('playnow - ' + msg);
       playlist.addandplay(msg).then(function(p){
           playsong(p);
-      });
+      }).catch(function(error){socket.emit('web-problem',{message:error.code === 'DIRECT_AUDIO_REQUIRED' ? directAudio.unsupportedMessage : 'Could not add this item.'});});
     });
     
     socket.on('addtolist', function(msg){
       console.log('addtolist - ' + msg);
-      playlist.addlast(msg);
+      playlist.addlast(msg).catch(function(error){socket.emit('web-problem',{message:error.code === 'DIRECT_AUDIO_REQUIRED' ? directAudio.unsupportedMessage : 'Could not add this item.'});});
     });
     
     socket.on('stick', function(msg){
       console.log('stick - ' + msg);
-      playlist.addtosticky(msg);
+      playlist.addtosticky(msg).catch(function(error){socket.emit('web-problem',{message:error.code === 'DIRECT_AUDIO_REQUIRED' ? directAudio.unsupportedMessage : 'Could not add this item.'});});
     });
 
     socket.on('unstick', function(msg){
@@ -545,6 +523,7 @@ function createNewPlayer(){
     newplayer.on('playback-error', function(event){
         if (selectedPlayer !== newplayer) return;
         if (event.playbackId !== null && event.playbackId !== playbackId) return;
+        if (event.error.code === 'DIRECT_AUDIO_REQUIRED') io.sockets.emit('web-problem',{message:directAudio.unsupportedMessage});
         if (spotifyItem.isSong(playlist.getCurrentSong())) {
             io.sockets.emit('spotify-problem', {message:'Spotify track unavailable or Spotify needs to reconnect'});
         }
@@ -627,6 +606,7 @@ async function playsong(songobj){
             }
         } catch(error) {
             if (player !== currentPlayer || playbackId !== currentPlaybackId) return;
+            if (error.code === 'DIRECT_AUDIO_REQUIRED') return;
             if (playerBackend === 'lms') {
                 console.error('LMS playback failed - ' + error);
                 io.sockets.emit('spotify-problem', {message:error.message});

@@ -27,9 +27,9 @@ var randyUI = (function () {
     function sourceIcon(source) {if (source !== 'spotify') return ''; return '<span class="randy-source" title="'+(source==='spotify'?'Spotify':'Local')+'">'+icon(source==='spotify'?'spotify':'local',source==='spotify'?'Spotify':'Local')+'</span>';}
     function row(item,actions) {
         var el=$('<div class="search-result randy-item">').attr('data-source',item.source || 'local').append(cover(item.artwork));
-        var title=$('<div class="search-result-name clickablelink">').append($('<span class="randy-item-title">').text(item.title),$('<span class="search-result-path">').text(item.subtitle || [item.artist,item.album].filter(Boolean).join(' · ')));
+        var title=$('<div class="search-result-name clickablelink">').append($('<span class="randy-item-title">').append(sourceIcon(item.source),$('<span>').text(item.title)),$('<span class="search-result-path">').text(item.subtitle || [item.artist,item.album].filter(Boolean).join(' · ')));
         if(actions.open)title.on('click',actions.open);else if(actions.play)title.on('click',actions.play);
-        el.append(title,$('<span>').html(sourceIcon(item.source)));
+        el.append(title);
         var controls=$('<div class="randy-item-actions">');
         [['play','Play'],['add','Add to queue'],['sticky','Sticky']].forEach(function(action){if(actions[action[0]])controls.append(actionButton(action[0],action[1],actions[action[0]]));});
         return el.append(controls);

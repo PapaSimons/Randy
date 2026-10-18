@@ -745,3 +745,19 @@ test('SpotOn load while LMS is down recovers only the latest selected track', as
     assert.equal(loads.length,1);assert.equal(loads[0][2],'spoton://track:6UCFZ9ZOFRxK8oak7MdPZu');
     assert.equal(f.ended.length,0);assert.equal(f.errors.length,0);
 });
+
+for (const url of ['https://example.com/music.flac', 'https://ice1.somafm.com/groovesalad-256-mp3', 'https://radio.example/live.m3u8']) {
+    test('direct URL is passed unchanged to LMS: ' + url, async t => {
+        const f = fixture(t);
+        await f.player.loadAndPlay({songfile:url,type:'stream'}, {playbackId:99});
+        assert.ok(f.calls.some(c => c[0] === 'playlist' && c[1] === 'play' && c[2] === url));
+        assert.ok(f.calls.every(c => !JSON.stringify(c).includes('/web-stream/')));
+    });
+}
+for (const url of ['https://youtube.com/watch?v=test', 'https://soundcloud.com/artist/song']) {
+    test('persisted media-service item is rejected before LMS load: ' + url, async t => {
+        const f = fixture(t);
+        await assert.rejects(f.load(99, url), {message:require('../lib/direct-audio').unsupportedMessage});
+        assert.equal(f.calls.some(c => c[0] === 'playlist' && c[1] === 'play'), false);
+    });
+}

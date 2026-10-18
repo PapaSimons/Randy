@@ -56,7 +56,7 @@ The browser interface lives in `public/index.html`, with application JavaScript 
 - `node --check index.js`: check server syntax. Run the same command on changed JavaScript files.
 - `bash -n install.sh update.sh update_mpv_alsa.sh`: check maintenance script syntax without executing them.
 
-Install `mpv` for playback and `yt-dlp` for supported online sources. There is no separate frontend build step or configured `npm test`/lint script. Check startup output for missing dependencies before testing playback.
+Install `mpv` for the legacy playback backend. Web URLs must point directly to playable audio or radio streams; webpage playback is not supported. There is no separate frontend build step or configured `npm test`/lint script. Check startup output for missing dependencies before testing playback.
 
 ## Coding Style & Naming Conventions
 
