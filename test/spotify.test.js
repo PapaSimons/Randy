@@ -91,7 +91,7 @@ test('album resolution rejects a different URI rather than importing the wrong a
     const f=fixture();const album=(await f.client.search('Air')).albums[0];
     f.handler(async(u,o,c)=>c?.includes('item_id:albums')&&c[3]==='1'?{ok:true,json:async()=>({result:{item_loop:[item('album','2BtE7qm1qzM80p9vLSiXkj')]}})}:null);
     const result=await f.client.browse(album.key,true);
-    assert.equal(result.enumerable,false);assert.equal(result.items.length,0);assert.match(result.message,/reliably resolve/);
+    assert.equal(result.enumerable,false);assert.equal(result.items.length,0);assert.match(result.message,/Randy couldn't open this one\. Try it in Spotify\./);
 });
 test('album leaf metadata supplies original title, duration, artist, artwork and parent identity',async()=>{
     const f=fixture();const album=(await f.client.search('Air')).albums[0];
@@ -218,8 +218,9 @@ test('browser search debounce and stale-response protection leave only the newes
     const chain={empty(){rendered.length=0;return this;},append(value){rendered.push(value);return this;},text(value){this.label=value;return this;},on(){return this;},attr(){return this;}};
     const $=value=>typeof value==='function'?undefined:value==='#spotify-search-results'?chain:{...chain};
     const context=vm.createContext({$,document:{addEventListener(){}},AbortController,AbortSignal,window:{},setTimeout:fn=>{timers.push(fn);return timers.length;},clearTimeout(){},
-        fetch:(url,options)=>new Promise(resolve=>pending.push({url,options,resolve})),setInterval(){}});
+        fetch:(url,options)=>url==='/spotify/status'?Promise.resolve({ok:true,json:async()=>({connected:true,includeSearch:true})}):new Promise(resolve=>pending.push({url,options,resolve})),setInterval(){}});
     vm.runInContext(fs.readFileSync(path.resolve(__dirname,'../public/JS/spotify.js'),'utf8'),context);
+    await context.spotifyUI.refresh();
     context.spotifyUI.invalidate();context.spotifyUI.search('old');assert.equal(pending.length,0);timers.shift()();
     context.spotifyUI.invalidate();context.spotifyUI.search('new');timers.shift()();
     const groups=label=>({results:{tracks:[],albums:[],artists:[],playlists:[],message:label}});
@@ -228,22 +229,30 @@ test('browser search debounce and stale-response protection leave only the newes
     pending[0].resolve({ok:true,json:async()=>({results:{tracks:[],albums:[],artists:[],playlists:[{title:'STALE'}]}})});await new Promise(setImmediate);
     assert.equal(rendered.length,count);assert.equal(pending[0].options.signal.aborted,true);
 });
-test('Connect notice persists, updates title, clears stale metadata and disappears on stop or takeover',()=>{
-    const nodes=new Map();
-    const $=value=>{if(typeof value==='function')return; if(!nodes.has(value))nodes.set(value,{length:1,label:'',writes:0,props:{},text(v){if(arguments.length===0)return this.label;this.writes++;this.label=v;return this;},prop(k,v){this.props[k]=v;return this;},removeClass(){return this;},addClass(){return this;},remove(){return this;}});return nodes.get(value);};
-    const context=vm.createContext({$,document:{addEventListener(){}}});
+test('Connect notice has a Spotify icon, second-line track, deduplicated updates and clears on takeover',()=>{
+    const base=require('cheerio').load('<div id="spotify-connect-toast"></div><div id="songlist"></div>');
+    const $=query=>typeof query==='function' ? undefined : base(query);
+    const context=vm.createContext({$,document:{addEventListener(){}},randyUI:{icon:()=>'<svg class="randy-icon"></svg>'}});
     vm.runInContext(fs.readFileSync(path.resolve(__dirname,'../public/JS/spotify.js'),'utf8'),context);
-    const ui=context.spotifyUI;
+    const ui=context.spotifyUI,toast=$('#spotify-connect-toast');
     ui.setOwnership({state:'spotify_connect',trackKey:'A',playbackState:'playing'});
-    ui.updateNowPlaying({source:'spotify_connect',title:'First',artist:'Artist'});
-    const toast=nodes.get('#spotify-connect-toast');assert.equal(toast.props.hidden,false);assert.equal(toast.label,'Spotify Connect · First — Artist');
-    const writes=toast.writes;ui.setOwnership({state:'spotify_connect',trackKey:'A',playbackState:'playing'});assert.match(toast.label,/First/);assert.equal(toast.writes,writes);
-    ui.setOwnership({state:'spotify_connect',trackKey:'B',playbackState:'playing'});assert.equal(toast.label,'Spotify Connect');
-    ui.updateNowPlaying({source:'spotify_connect',title:'Second',artist:'Other'});assert.match(toast.label,/Second — Other/);
-    ui.setOwnership({state:'spotify_connect',playbackState:'stopped'});assert.equal(toast.props.hidden,true);assert.equal(toast.label,'');
-    ui.setOwnership({state:'randy'});ui.updateNowPlaying({source:'spotify_connect',title:'STALE'});assert.equal(toast.label,'');
-    ui.setOwnership({state:'disconnected'});assert.equal(toast.props.hidden,true);
+    ui.updateNowPlaying({source:'spotify_connect',title:'First',artist:'Artist',albumName:'Album'});
+    assert.equal(toast.prop('hidden'),false);assert.equal(toast.find('svg').length,1);
+    assert.equal(toast.find('.connect-toast-heading').text(),'Spotify Connect');
+    assert.equal(toast.find('.connect-toast-track').text(),'First');
+    assert.equal(toast.find('.connect-toast-track').attr('title'),'First');
+    assert.equal(toast.find('.connect-toast-album').text(),'Album - Artist');
+    const node=toast.find('.connect-toast-track')[0];
+    ui.setOwnership({state:'spotify_connect',trackKey:'A',playbackState:'playing'});assert.equal(toast.find('.connect-toast-track')[0],node);
+    ui.setOwnership({state:'spotify_connect',trackKey:'B',playbackState:'playing'});assert.equal(toast.find('.connect-toast-track').text(),'');
+    ui.updateNowPlaying({source:'spotify_connect',title:'<Second>',artist:'Other'});
+    assert.equal(toast.find('.connect-toast-track').text(),'<Second>');
+    assert.equal(toast.find('.connect-toast-album').text(),'Other');assert.equal(toast.find('second').length,0);
+    ui.setOwnership({state:'spotify_connect',playbackState:'stopped'});assert.equal(toast.prop('hidden'),true);assert.equal(toast.text(),'');
+    ui.setOwnership({state:'randy'});ui.updateNowPlaying({source:'spotify_connect',title:'STALE'});assert.equal(toast.text(),'');
+    ui.setOwnership({state:'disconnected'});assert.equal(toast.prop('hidden'),true);
 });
+
 test('real seek-dial callback sends finite Spotify positions and stays inside EOF',()=>{
     let options,start,length='155.6';const sent=[];
     const context=vm.createContext({$:selector=>({knob:value=>options=value,bind:(name,callback)=>start=callback}),
@@ -271,34 +280,12 @@ function browserFixture(value) {
     vm.runInContext(fs.readFileSync(path.resolve(__dirname,'../public/JS/spotify.js'),'utf8'),context);
     return {ui:context.spotifyUI,elements,opened,listeners};
 }
-for(const connected of [true,false])test('Settings shows simple connection states and links to actual SpotOn settings: '+connected,async()=>{
-    const value={connected,state:connected?'connected':'not-connected',account:'Listener',includeSearch:connected,
-        settingsUrl:'http://127.0.0.1:9000/plugins/SpotOn/settings/basic.html',playbackAuthorized:connected};
-    const b=browserFixture(value);await b.ui.refresh();
-    assert.equal(b.elements.get('#spotify-api-auth-status').label,connected?'Connected ✓':'Not connected');
-    assert.equal(b.elements.get('#spotify-playback-auth-status').label,connected?'Connected ✓':'Not connected');
-    assert.equal(b.elements.get('#spotify-account').label,connected?'Listener · ':'');
-    assert.equal(b.elements.get('#spotify-settings-link').attrs.href,value.settingsUrl);
-    assert.equal(b.elements.get('#spotify-settings-link').props.hidden,false);
-    assert.equal(b.elements.get('#spotify-search-enabled').props.disabled,!connected);
-    assert.equal(b.elements.get('#spotify-search-enabled').props.checked,connected);
-    assert.equal(b.elements.has('#spotify-controls'),false);
-});
-test('Settings renders auth-expired and unavailable states without stale connected status',async()=>{
-    for(const state of ['auth-expired','unavailable','not-installed']){
-        const b=browserFixture({state,connected:false,includeSearch:true,playbackAuthorized:false});await b.ui.refresh();
-        assert.equal(b.elements.get('#spotify-search-enabled').props.disabled,true);
-        assert.equal(b.elements.get('#spotify-search-enabled').props.checked,false);
-        assert.notEqual(b.elements.get('#spotify-api-auth-status').label,'Connected ✓');
-        assert.notEqual(b.elements.get('#spotify-playback-auth-status').label,'Connected ✓');
-    }
-});
-test('Settings uses existing device cards without embedded Spotify configuration',()=>{
+test('Settings uses existing white device card for native Spotify controls, without an LMS settings link',()=>{
     const $=require('cheerio').load(fs.readFileSync(path.resolve(__dirname,'../public/index.html'),'utf8'));
     assert.equal($('#audio-output-settings .device').length,1);
     assert.equal($('#spotify-settings .device').length,1);
-    assert.equal($('#spotify-configuration, #spotify-configure, #spotify-client-id').length,0);
-    assert.equal($('#spotify-settings-link').attr('target'),'_blank');
+    assert.equal($('#spotify-settings-link').length,0);
+    assert.equal($('#spotify-account-start,#spotify-account-remove,#spotify-playback-start,#spotify-client-id,#spotify-client-remove').length,5);
     assert.equal($('#spotify-settings .device #spotify-search-enabled').length,0);
     assert.equal($('#spotify-settings > label #spotify-search-enabled').length,1);
     assert.equal($('#replayselect').length,0);

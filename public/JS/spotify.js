@@ -2,7 +2,9 @@
 var spotifyUI = (function () {
     'use strict';
     var ownership = 'randy', queueIndex = 0, lastWasConnect = false, connectMetadata = null, connectTrack = null, connectStopped = false;
-    var state, generation = 0, searchTimer, controller, browseGeneration = 0;
+    var chimeContext, connectAnnounced=false;
+    var spotifyBrowseHistory = [];
+    var connectTarget, lastToast, state, generation = 0, searchTimer, controller, browseGeneration = 0;
     var labels = { connected: 'Connected', 'not-connected': 'Not connected', connecting: 'Connecting',
         'not-installed': 'SpotOn not installed', 'auth-expired': 'Spotify needs to reconnect',
         unavailable: 'LMS unavailable', error: 'SpotOn error' };
@@ -22,18 +24,11 @@ var spotifyUI = (function () {
     function refresh() {
         return request('status').then(function (value) {
             state = value;
-            $('#spotify-account').text(value.connected && value.account ? value.account + ' · ' : '');
-            var unavailable = ['unavailable', 'not-installed', 'error'].includes(value.state);
-            $('#spotify-api-auth-status').text(unavailable ? labels[value.state] : value.connected ? 'Connected ✓' : labels[value.state] || 'Not connected');
-            $('#spotify-playback-auth-status').text(unavailable ? 'Unavailable' : value.playbackAuthorized ? 'Connected ✓' : 'Not connected');
-            $('#spotify-search-enabled').prop('checked', !!value.connected && !!value.includeSearch).prop('disabled', !value.connected);
-            $('#spotify-settings-link').attr('href', value.settingsUrl || '').prop('hidden', !value.settingsUrl);
+            if(typeof spotifySettingsUI !== 'undefined')spotifySettingsUI.refresh();
             return value;
         }).catch(function () {
-            $('#spotify-account').text('');
-            $('#spotify-api-auth-status').text('LMS unavailable');
-            $('#spotify-playback-auth-status').text('Unavailable');
-            $('#spotify-search-enabled').prop('checked', false).prop('disabled', true);
+            state=null;
+            if(typeof spotifySettingsUI !== 'undefined')spotifySettingsUI.refresh();
         });
     }
     function action(item, name) {
@@ -41,20 +36,35 @@ var spotifyUI = (function () {
             .then(function (r) { if (r.cancelled) return; message({ message: name === 'sticky' ? 'Added Spotify sticky' : 'Spotify: ' + r.count + ' track(s)' }); })
             .catch(message);
     }
-    function row(item) {
+    function row(item, nested) {
         var actions = item.song ? {
             play:function(){action(item,'play');},add:function(){action(item,'add');},sticky:function(){action(item,'sticky');}
-        } : {open:function(){open(item);}};
+        } : {open:function(){open(item, nested);}};
         if (!item.song && item.kind === 'album') {
             actions.play=function(){action(item,'play');};
             actions.add=function(){action(item,'add');};
         }
         return randyUI.row(Object.assign({},item,{source:'spotify'}),actions);
     }
-    function open(item) {
+    function backFromSpotify() {
+        ++browseGeneration; // A late child response must not overwrite its parent.
+        if (spotifyBrowseHistory.length) {
+            var previous = spotifyBrowseHistory.pop();
+            $('#browse-spotify').empty().append(previous.content);
+            browsepane('spotify', {scrollTop:previous.scroll});
+        } else browsepane('search-results');
+    }
+    function open(item, nested) {
+        if (nested) {
+            var parentScroll=$('#browse-modes').scrollTop();
+            spotifyBrowseHistory.push({content:$('#browse-spotify').children().detach(),scroll:parentScroll});
+        } else {
+            spotifyBrowseHistory.forEach(function(previous){previous.content.remove();});
+            spotifyBrowseHistory=[];
+        }
         var token = ++browseGeneration;
-        browsepane('spotify');
-        var pane = $('#browse-spotify').empty().append(button('Back to search', function () { browsepane('search-results'); }));
+        browsepane('spotify', {resetScroll:true});
+        var pane = $('#browse-spotify').empty().append(button(spotifyBrowseHistory.length ? '< Back' : 'Back to search', backFromSpotify));
         pane.append($('<p>').text('Loading Spotify…'));
         request('browse', { key: item.key, all: true }).then(function (collection) {
             if (token !== browseGeneration) return;
@@ -68,8 +78,14 @@ var spotifyUI = (function () {
             }
             if (collection.message) pane.append($('<p>').text(collection.message));
             else if (!collection.items.length) pane.append($('<p>').text('No tracks available.'));
-            collection.items.forEach(function (entry) { pane.append(row(entry)); });
+            collection.items.forEach(function (entry) { pane.append(row(entry, true)); });
         }).catch(function (error) { if (token === browseGeneration) pane.append($('<p>').text(error.message)); });
+    }
+    function closeBrowse() {
+        ++browseGeneration;
+        spotifyBrowseHistory.forEach(function(previous){previous.content.remove();});
+        spotifyBrowseHistory=[];
+        $('#browse-spotify').empty();
     }
     function invalidate() {
         generation++; clearTimeout(searchTimer); if (controller) controller.abort();
@@ -79,7 +95,7 @@ var spotifyUI = (function () {
     function search(query) {
         invalidate(); // Repeated keyup events for one query must not append duplicate notices.
         var token = generation;
-        if (query.trim().length < 2 || /^https?:/i.test(query)) return;
+        if (query.trim().length < 2 || /^https?:/i.test(query) || !state || !state.connected || !state.includeSearch) return;
         controller = new AbortController();
         var abort = controller;
         searchTimer = setTimeout(function () {
@@ -89,53 +105,98 @@ var spotifyUI = (function () {
                     var pane = $('#spotify-search-results').empty(), result = response.results;
                     ['tracks', 'albums', 'artists'].forEach(function (kind) {
                         if (!result[kind].length) return;
-                        pane.append($('<h3 class="randy-result-heading">').text('Spotify · ' + kind));
+                        pane.append($('<h3 class="randy-result-heading">').attr('id','search-spotify-'+kind).attr('data-search-section','Spotify '+kind).attr('data-search-count',result[kind].length).text('Spotify · ' + kind));
                         result[kind].forEach(function (item) { pane.append(row(item)); });
                     });
                     if (result.message && state && state.includeSearch) pane.append($('<p class="spotify-notice">').text(result.message));
+                    if(typeof window !== 'undefined' && window.randySearchNav)window.randySearchNav.refresh();
                 }).catch(function (error) {
                     if (token === generation && error.name !== 'AbortError' && state && state.includeSearch)
                         $('#spotify-search-results').text('Spotify search is temporarily unavailable.');
                 });
         }, 350);
     }
-    function useConnectRow(index) {
+    function useConnectTarget(index) {
         if (index != null) queueIndex = index;
         if (ownership !== 'spotify_connect' && ownership !== 'transitioning' && !(ownership === 'disconnected' && lastWasConnect)) return false;
-        if (!$('#spotify-connect-nowplaying').length) {
-            var card=$('<div id="spotify-connect-nowplaying" class="onesong onesong-current">');
-            card.append($('<div class="onesong-details">').append($('<div class="onesong-tit">'), $('<div class="onesong-artist">'), $('<div class="onesong-info">')),
-                $('<div class="onesong-len">'));
-            $('#songlist').before(card);
-        }
+        // Retain duration/seek state without inserting a Connect item into Randy's queue.
+        if (!connectTarget) connectTarget=$('<div>').append($('<div class="onesong-len">'), $('<div class="onesong-info">'));
         $('#songlist .onesong-current').removeClass('onesong-current');
-        if (typeof cursong !== 'undefined') cursong=$('#spotify-connect-nowplaying');
+        if (typeof cursong !== 'undefined') cursong=connectTarget;
         return true;
     }
+    function unlockChime() {
+        try {
+            var AudioContext=window.AudioContext || window.webkitAudioContext;
+            if(!AudioContext)return;
+            if(!chimeContext || chimeContext.state==='closed')chimeContext=new AudioContext();
+            if(chimeContext.state==='suspended')chimeContext.resume().catch(function(){});
+        } catch (_) { /* Audio is optional when browser permissions block it. */ }
+    }
+    function playConnectChime() {
+        if(!chimeContext || chimeContext.state!=='running')return;
+        try {
+            var start=chimeContext.currentTime;
+            [523.25,659.25].forEach(function(frequency,index){
+                var oscillator=chimeContext.createOscillator(),gain=chimeContext.createGain();
+                var at=start+index*.12;
+                oscillator.type='sine';oscillator.frequency.value=frequency;
+                gain.gain.setValueAtTime(0,at);
+                gain.gain.linearRampToValueAtTime(.035,at+.015);
+                gain.gain.exponentialRampToValueAtTime(.0001,at+.22);
+                oscillator.connect(gain);gain.connect(chimeContext.destination);
+                oscillator.start(at);oscillator.stop(at+.23);
+                oscillator.onended=function(){oscillator.disconnect();gain.disconnect();};
+            });
+        } catch (_) { /* Never let a notification sound affect playback controls. */ }
+    }
+    document.addEventListener('pointerdown',unlockChime);
+    document.addEventListener('keydown',unlockChime);
     function setOwnership(value) {
         ownership=value.state;
-        if (value.trackKey && value.trackKey !== connectTrack) {connectMetadata=null;connectTrack=value.trackKey;}
+        if(ownership==='randy' || ownership==='disconnected' || value.playbackState==='stopped')connectAnnounced=false;
+        if(ownership==='spotify_connect' && value.playbackState==='playing' && !connectAnnounced) {
+            connectAnnounced=true;playConnectChime();
+        }
+        if (value.trackKey && value.trackKey !== connectTrack) {connectMetadata=null;connectTarget=null;connectTrack=value.trackKey;}
         connectStopped=value.playbackState === 'stopped';
         if (ownership !== 'spotify_connect') {connectMetadata=null;connectTrack=null;}
         updateConnectToast();
         if (ownership === 'spotify_connect') lastWasConnect=true;
         if (ownership === 'randy') lastWasConnect=false;
         $('#spotify-owner').text(({randy:'Randy',spotify_connect:'Spotify Connect',transitioning:'Transitioning',disconnected:'Disconnected'})[ownership] || ownership);
-        if (!useConnectRow()) {
-            $('#spotify-connect-nowplaying').remove();
+        if (!useConnectTarget()) {
+            connectTarget=null;
             if (typeof cursong !== 'undefined') cursong=$('#song_'+queueIndex).addClass('onesong-current');
         }
     }
     function updateConnectToast() {
         var visible=ownership === 'spotify_connect' && !connectStopped;
-        var text=visible ? 'Spotify Connect'+(connectMetadata && connectMetadata.title ? ' · '+connectMetadata.title+(connectMetadata.artist ? ' — '+connectMetadata.artist : '') : '') : '';
+        var title=visible && connectMetadata ? connectMetadata.title || '' : '';
+        var album=visible && connectMetadata ? connectMetadata.albumName || '' : '';
+        var artist=visible && connectMetadata ? connectMetadata.artist || '' : '';
+        var details=[album,artist].filter(Boolean).join(' - ');
+        var key=JSON.stringify([visible,title,details]);
         var toast=$('#spotify-connect-toast').prop('hidden',!visible);
-        // Avoid re-announcing identical live-region text on every 250ms poll.
-        if(toast.text()!==text)toast.text(text);
+        if(key!==lastToast) {
+            lastToast=key;toast.empty();
+            if(visible)toast.append($('<div class="connect-toast-heading">').html(randyUI.icon('spotify')+'<span>Spotify Connect</span>'),
+                $('<div class="connect-toast-track">').text(title).attr('title',title),
+                $('<div class="connect-toast-album">').text(details).attr('title',details));
+        }
     }
     function updateNowPlaying(meta) {
         if(meta.source !== 'spotify_connect' || ownership !== 'spotify_connect')return;
         connectMetadata=meta;updateConnectToast();
+    }
+    function accountRemoved() {
+        var showingSpotify=lastWasConnect || $('#songlist .onesong-current .randy-source[title="Spotify"]').length;
+        invalidate();closeBrowse();setOwnership({state:'disconnected'});
+        if(showingSpotify) {
+            $('.album-art').css('background-image','url("/IMG/Record.png")');
+            $('#browse-zen').empty();document.title='Randy';
+        }
+        refresh();
     }
     document.addEventListener('error', function (event) {
         var image = event.target;
@@ -144,12 +205,9 @@ var spotifyUI = (function () {
         }
     }, true);
     $(function () {
-        $('#spotify-search-enabled').on('change', function () {
-            invalidate(); request('preference', { enabled: this.checked }).then(refresh).catch(message);
-        });
         refresh(); setInterval(refresh, 5000);
-        if (typeof socket !== 'undefined') { socket.on('spotify-problem', message); }
+        if (typeof socket !== 'undefined') { socket.on('spotify-problem', message);socket.on('spotify-account-removed',accountRemoved); }
     });
-    return { setOwnership:setOwnership, updateNowPlaying:updateNowPlaying, useConnectRow:useConnectRow, search: search, invalidate: invalidate, cover: cover, refresh: refresh,
+    return { setOwnership:setOwnership, updateNowPlaying:updateNowPlaying, useConnectTarget:useConnectTarget, search: search, invalidate: invalidate, closeBrowse:closeBrowse, accountRemoved:accountRemoved, cover: cover, refresh: refresh,
         escape: function (value) { return String(value || '').replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); } };
 }());

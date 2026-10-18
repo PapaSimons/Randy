@@ -6,6 +6,8 @@
 var cursong = null;
 var prevbrowserpanemode = null;
 var curbrowserpanemode = null;
+var browseScrollPositions = {};
+var browseSearchQuery = null;
 var scrolltosong = true;
 var seekbarreleased = true;
 var isplaying = false;
@@ -52,14 +54,43 @@ function debounce(func, wait, immediate) {
 };
 
 var localSearchGeneration = 0;
-$('#search-bar').on('input', function () { localSearchGeneration++; spotifyUI.invalidate(); });
+var searchOpen = false, searchReturnMode = 'init';
+function beginSearch(){
+    if (!searchOpen) {
+        searchReturnMode = ['init','files','settings','stickies'].includes(curbrowserpanemode) ? curbrowserpanemode : 'init';
+        searchOpen = true;
+    }
+    $('#search-close').prop('hidden',false);
+}
+function closeSearch(){
+    var returnMode = searchReturnMode;
+    var wasOpen = searchOpen || ['search-results','spotify','album'].includes(curbrowserpanemode);
+    if (!['init','files','settings','stickies'].includes(returnMode))returnMode='init';
+    searchOpen = false;localSearchGeneration++;browseSearchQuery=null;
+    spotifyUI.invalidate();
+    spotifyUI.closeBrowse();
+    $('#search-bar').val('');$('#search-close').prop('hidden',true);
+    $('#search').removeClass('loading');$('#browse-search-url').hide();
+    $('#local-search-results').empty();browseScrollPositions['search-results']=0;
+    if (wasOpen)browsepane(returnMode);
+}
+$('#search-close').on('click',function(){closeSearch();$('#search-bar').focus();});
+$('#search-bar').on('input', function () {
+    localSearchGeneration++;spotifyUI.invalidate();
+    if (!$(this).val().trim())closeSearch();else beginSearch();
+}).on('keydown',function(event){if(event.key==='Escape'){event.preventDefault();closeSearch();}});
 $('#search-bar').keyup(debounce(async function(event) {
     var searchQuery = $('#search-bar').val(), searchGeneration = localSearchGeneration;
+    if (!searchQuery.trim())return;
+    beginSearch();
+    var resetSearchScroll = searchQuery !== browseSearchQuery;
+    browseSearchQuery = searchQuery;
     spotifyUI.search(searchQuery);
     if (ValidURL($('#search-bar').val())){
         $('#browse-search-url').fadeOut();
         $('#search').addClass('loading');
         api.getURLMeta($('#search-bar').val()).then(function(meta){
+           if (searchGeneration !== localSearchGeneration)return;
            if (meta.title){
                templist.search = [$('#search-bar').val()];
                console.log(JSON.stringify(meta));
@@ -86,7 +117,7 @@ $('#search-bar').keyup(debounce(async function(event) {
              browsepane("init");
          } else {
             $('#search').addClass('loading');
-            browsepane('search-results');
+            browsepane('search-results', {resetScroll:resetSearchScroll});
              api.searchSongs(searchQuery).then(async function(rtn){
                 if (searchGeneration !== localSearchGeneration) return;
                 var res = rtn.results;     
@@ -102,7 +133,7 @@ $('#search-bar').keyup(debounce(async function(event) {
                  if (res.radiostations.length > 0){
                     hasresults = true;
                     templist.searchradiostations = [];
-                    ht += "<h3>Radio Stations</h3>";
+                    ht += "<h3 id='search-radio' data-search-section='Radio' data-search-count='" + res.radiostations.length + "'>Radio Stations</h3>";
                     for (i in res.radiostations){
                         templist.searchradiostations.push(res.radiostations[i].path);
                         ht += "<div class='search-result'>";
@@ -117,7 +148,7 @@ $('#search-bar').keyup(debounce(async function(event) {
                  if (res.albums.length > 0){
                     hasresults = true;
                      templist.searchalbums = [];
-                     ht += "<h3>Local albums</h3>";
+                     ht += "<h3 id='search-local-albums' data-search-section='Local albums' data-search-count='" + res.albums.length + "'>Local albums</h3>";
                      for (i in res.albums){
                          templist.searchalbums.push(res.albums[i].album);
                          ht += "<div class='local-album-slot' data-index='" + i + "'></div>";
@@ -127,15 +158,13 @@ $('#search-bar').keyup(debounce(async function(event) {
                  if (res.files.length > 0){
                     hasresults = true;
                      templist.searchsongs = [];
-                     ht += "<h3>Local songs</h3>";
+                     ht += "<h3 id='search-local-songs' data-search-section='Local songs' data-search-count='" + res.files.length + "'>Local songs</h3>";
                      for (i in res.files){
                         templist.searchsongs.push(res.files[i].path);
                         ht += "<div class='local-track-slot' data-index='" + i + "'></div>";
                      }
                  }
-                 if (!hasresults){
-                    ht += "<h3>No results...</h3>";
-                 }
+                 if (!hasresults) ht = '';
                 
                 $('#local-search-results').html(ht);
                 ['album','track'].forEach(function(kind){
@@ -150,6 +179,7 @@ $('#search-bar').keyup(debounce(async function(event) {
                 });
                 $('#search').removeClass('loading');
                 browsepane('search-results');
+                if(window.randySearchNav)window.randySearchNav.refresh();
             });
          }
      }
@@ -412,7 +442,7 @@ socket.on('playlist', function(objj){
    } 
     //set the current song
     cursong = $('#song_' + curid);
-    spotifyUI.useConnectRow(curid);
+    spotifyUI.useConnectTarget(curid);
     //scroll to the current song
     if (scrolltosong){
         var firstel = $('#song_1');
@@ -422,12 +452,20 @@ socket.on('playlist', function(objj){
     scrolltosong = true;
 });
 
-function browsepane(mode){
+function browsepane(mode, options){
+    options = options || {};
+    var scrollpane = $('#browse-modes');
+    if (curbrowserpanemode) browseScrollPositions[curbrowserpanemode] = scrollpane.scrollTop();
+    if (options.resetScroll) browseScrollPositions[mode] = 0;
+    if (Number.isFinite(options.scrollTop)) browseScrollPositions[mode] = options.scrollTop;
+    var restoreScroll = function(){
+        if (curbrowserpanemode === mode) scrollpane.scrollTop(browseScrollPositions[mode] || 0);
+    };
     prevbrowserpanemode = curbrowserpanemode;
     curbrowserpanemode = mode;
     console.log("change mode to: " + mode);
-    $('#browse-modes').children().hide();
-    $('#browse-' + mode).fadeIn();
+    $('#browse-modes').children().stop(true, true).hide();
+    $('#browse-' + mode).stop(true, true).fadeIn(restoreScroll);
     $('#browse-search-url').hide();
     if (mode != "zen"){
         $('#browse-home').show();
@@ -440,6 +478,7 @@ function browsepane(mode){
         $('#browse-zen').show();
         $('.album-art').css("background-image", 'url("IMG/Record.png")');
     }
+    restoreScroll();
     switch(mode) {
         case "zen":
             
@@ -470,7 +509,7 @@ function browsepane(mode){
                 ht += "<button type='button' class='randy-action' onclick='browsepane(\"init\");' aria-label='Back to home' title='Back to home'>" + randyUI.icon('back') + "</button>";
                  if (res.albums.length > 0){
                      templist.allalbums = [];
-                     //ht += "<h3>Local albums</h3>";
+                     //ht += "<h3 id='search-local-albums' data-search-section='Local albums' data-search-count='" + res.albums.length + "'>Local albums</h3>";
                      var lastalb = "";
                      for (i in res.albums){
                          var albarr = res.albums[i].albumpath.split("/");
@@ -500,7 +539,7 @@ function browsepane(mode){
                 if (curbrowserpanemode !== 'album' || templist.curalbum !== albumPath) return;
                 var res = rtn.results;
                 var pane = $('#browse-album').empty();
-                pane.append($('<button type="button">').text(albumBack === 'search-results' ? 'Back to search' : 'Back to albums').on('click',function(){browsepane(albumBack);}));
+                pane.append($('<button type="button">').text(albumBack === 'search-results' ? 'Back to search' : '< Back').on('click',function(){browsepane(albumBack);}));
                 pane.append(randyUI.cover(res.albumart).addClass('album-detail-cover'),$('<h3>').text(res.name),
                     $('<p>').text([res.artist,res.year].filter(Boolean).join(' · ')));
                 templist.curalbumfiles = res.files.map(function(file){return file.path;});
@@ -807,7 +846,7 @@ function hideToast(){
 function showAlbum(list,i){
     templist.curalbum = templist[list][i];
     templist.curalbumi = i;
-    browsepane('album');
+    browsepane('album', {resetScroll:true});
 }
 
 //fix broken images

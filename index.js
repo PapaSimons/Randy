@@ -29,6 +29,9 @@ var port = process.env.PORT || process.argv[2] || 80;
 var selectedPlayer = null;
 var playbackId = 0;
 var shuttingDown = false;
+var playlistInitialized = false;
+var readyPlayer = null;
+var startupPlaybackPlayer = null;
 var audiodevicelist = [];
 var playerBackend = process.env.RANDY_PLAYER_BACKEND || 'mpv';
 var spotify = require('./lib/spotify')({serverUrl:process.env.LMS_SERVER_URL, playerId:process.env.LMS_PLAYER_ID,
@@ -45,7 +48,7 @@ app.use(bodyParser.urlencoded({
 ///--- Public web ui folder ---///
 
 app.use("/", express.static(__dirname + "/public"));
-require('./lib/spotify-routes')(app, {spotify, playlist, backend:playerBackend, playSong:playsong, getPlaybackId:() => playbackId});
+require('./lib/spotify-routes')(app, {spotify, playlist, backend:playerBackend, playSong:playsong, getPlaybackId:() => playbackId, onAccountRemoved:() => io.sockets.emit('spotify-account-removed')});
 app.post('/audio-output/list',async function(req,res){
     if(playerBackend!=='lms')return res.json({enabled:false});
     res.json({enabled:true,...await audioOutput.list()});
@@ -316,11 +319,26 @@ console.log("Running on - " + os.platform());
   
 ////--- init the player ---////
 
+// Player discovery and library loading finish independently. Start the persisted
+// Randy item once both are ready, regardless of the previous playback owner.
+function playCurrentSongOnStart(){
+    if (shuttingDown || !playlistInitialized || !readyPlayer || selectedPlayer !== readyPlayer ||
+        startupPlaybackPlayer === readyPlayer) return;
+    startupPlaybackPlayer = readyPlayer;
+    var playonstart = playlist.getSettings().playonstart;
+    if (playonstart !== true && playonstart !== 'true' && playonstart != null) return;
+    if (!(playlist.getPlayList() || []).length) return;
+    console.log('Playing current Randy queue item on start');
+    playsong(playlist.getCurrentSong());
+}
+
 function initRandy(){
     //check music folder
     if (!checkmf()){
         console.log("No music folder found");
         playlist.initPlaylist(emitplaylist, emitsticky, emitproblem).then(function(fsong){
+            playlistInitialized = true;
+            playCurrentSongOnStart();
             console.log("initated dbs and objects");
             //check if there is a non musicfolder playlist
             console.log('playlist.getPlayList() - ' + playlist.getPlayList());
@@ -336,9 +354,8 @@ function initRandy(){
         //load playlist
         playlist.getAllSongs().then(function(){
             playlist.initPlaylist(emitplaylist, emitsticky, emitproblem).then(function(fsong){
-                if (player != null){
-                    playsong(fsong); 
-                }
+                playlistInitialized = true;
+                playCurrentSongOnStart();
             }).catch(function(err){
                console.log("error while initing playlist - " + err); 
             });
@@ -540,14 +557,8 @@ function createNewPlayer(){
         console.log(playerBackend === 'lms' ? 'LMS adapter initialized; recovery runs in background' : 'New mpv player connected');
         player = newplayer;
         setVolume(playlist.getVolume());
-        if (playlist.getPlayList().length > 0){
-            var playonstart = playlist.getSettings().playonstart;
-            console.log('playonstart - ' + playonstart);
-            if (playonstart == 'true' || playonstart == null){
-                console.log('Playing on start');
-                playsong(playlist.getCurrentSong());
-            }
-        }
+        readyPlayer = newplayer;
+        playCurrentSongOnStart();
     }).catch(function(err){
         if (selectedPlayer === newplayer) console.error('Error creating player - ' + err);
     });
@@ -599,13 +610,15 @@ async function playsong(songobj){
         var currentPlayer = player;
         var currentPlaybackId = ++playbackId;
         try {
-            if (playerBackend === 'lms' && !(await spotify.ownership.prepareForRandyPlayback(currentPlayer, () => !shuttingDown && player === currentPlayer && playbackId === currentPlaybackId))) return;
+            if (playerBackend === 'lms' && !(await spotify.ownership.prepareForRandyPlayback(currentPlayer, () => !shuttingDown && player === currentPlayer && playbackId === currentPlaybackId, {deferConnectReset:!spotifyItem.isSong(songobj)}))) return;
             if (player !== currentPlayer || playbackId !== currentPlaybackId) return;
             console.log('Loading: ' + songobj.songfile);
             if (songobj.hasOwnProperty('songfile')){
                 await currentPlayer.loadAndPlay(songobj, { playbackId: currentPlaybackId });
                 if (player !== currentPlayer || playbackId !== currentPlaybackId) return;
                 if (playerBackend === 'lms') {
+                    if(!spotifyItem.isSong(songobj))spotify.ownership.afterRandyPlaybackStarted(
+                        () => !shuttingDown && player === currentPlayer && playbackId === currentPlaybackId);
                     var status = await currentPlayer.getStatus();
                     if (player !== currentPlayer || playbackId !== currentPlaybackId) return;
                     emitLMSNowPlaying(status, songobj);

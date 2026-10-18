@@ -35,10 +35,14 @@
               <div id="browse-home">
                   <div class="browse-top-menu">  
                     <button type='button' class='browse-top-back-icon clickable randy-icon-button' data-randy-icon='close' aria-label='Close browser' title='Close browser'></button>
+                    <div class="search-shell">
                     <div id="search">
                       <input id="search-bar" placeholder="Search weburls or keywords.." type="search" autocomplete="off"/>
+                      <button id="search-close" type="button" data-randy-icon="close" aria-label="Close search" title="Close search" hidden></button>
                       <button id="button" data-randy-icon="search" aria-label="Search" title="Search"></button>
                       <div class="spinner"><span data-randy-icon="spinner" aria-hidden="true"></span></div>
+                    </div>
+                    <nav id="search-section-nav" aria-label="Search result sections" hidden></nav>
                     </div>
                   </div>
                   <div id="browse-search-url">
@@ -93,12 +97,63 @@
                         </section>
                         <section id="spotify-settings">
                             <h3>Spotify</h3>
-                            <div class="device settings-card spotify-settings-card">
-                                <div class="spotify-status-row"><span>Account</span><span><span id="spotify-account"></span><span id="spotify-api-auth-status">Checking…</span></span></div>
-                                <div class="spotify-status-row"><span>Playback</span><span id="spotify-playback-auth-status">Checking…</span></div>
-                                <a id="spotify-settings-link" target="_blank" rel="noopener" hidden>Spotify settings →</a>
+                            <div class="device settings-card spotify-settings-card" id="spotify-native-settings">
+                                <div id="spotify-settings-unavailable" role="status" hidden></div>
+                                <div class="spotify-setting-block">
+                                    <div class="spotify-setting-row"><div class="spotify-setting-description"><div class="spotify-setting-title"><h4>Spotify Account</h4><span id="spotify-account-name" hidden></span><span id="spotify-account-state" role="status">Checking…</span></div><p>Connect your account to search Spotify and play music from Randy.</p></div><div class="spotify-setting-controls">
+                                    <div class="spotify-setting-actions">
+                                        <button id="spotify-account-start" type="button">Set up</button>
+                                        <button id="spotify-account-remove" type="button" hidden>Remove account</button>
+                                    </div>
+                                    </div></div>
+                                    <details id="spotify-account-fallback" hidden>
+                                        <summary>Having trouble finishing?</summary>
+                                        <p>If the Spotify return page cannot open, copy its address and paste it here. Randy will pass it to SpotOn to finish authorization.</p>
+                                        <label for="spotify-account-callback">Spotify return address</label>
+                                        <input id="spotify-account-callback" type="text" autocomplete="off" spellcheck="false">
+                                        <button id="spotify-account-complete" type="button">Finish connecting</button>
+                                    </details>
+                                </div>
+                                <div class="spotify-setting-block">
+                                    <div class="spotify-setting-row">
+                                        <div class="spotify-setting-description"><div class="spotify-setting-title"><h4>Spotify Connect</h4><span id="spotify-playback-state" role="status">Checking…</span></div><p>Play to Randy directly from the Spotify app on your phone or computer.</p></div>
+                                        <div class="spotify-setting-controls">
+                                            <button id="spotify-playback-start" type="button" disabled>Enable</button>
+                                        </div>
+                                    </div>
+                                    <ol id="spotify-playback-instructions" hidden>
+                                        <li>Open the Spotify app on a phone or computer on the same network as this server.</li>
+                                        <li>Start playing any track — the device list only appears during active playback.</li>
+                                        <li>Open the devices menu and select <strong id="spotify-pairing-device">SpotOn Authorization (Device Name)</strong>.</li>
+                                    </ol>
+                                </div>
+                                <div class="spotify-setting-block">
+                                    <div class="spotify-setting-row">
+                                        <div class="spotify-setting-description"><div class="spotify-setting-title"><h4>Spotify Client ID</h4><span id="spotify-client-value" hidden></span><span id="spotify-client-mode" role="status">Checking…</span></div><p>Use your own Client ID to avoid sharing Spotify search limits with other users.</p></div>
+                                        <div class="spotify-setting-controls">
+                                            <button id="spotify-client-toggle" type="button" aria-expanded="false" aria-controls="spotify-client-settings">Set up</button>
+                                        </div>
+                                    </div>
+                                    <div id="spotify-client-settings" hidden>
+                                        <label for="spotify-client-id">Client ID</label>
+                                        <input id="spotify-client-id" type="text" maxlength="32" autocomplete="off" spellcheck="false">
+                                        <div class="spotify-setting-actions">
+                                            <button id="spotify-client-save" type="button">Save</button>
+                                            <button id="spotify-client-remove" type="button" hidden>Reset to default</button>
+                                        </div>
+                                        <ol>
+                                            <li>Go to <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener noreferrer">developer.spotify.com/dashboard</a> and log in.</li>
+                                            <li>Create a new app (any name works).</li>
+                                            <li>In the app’s settings, add the following Redirect URI <code id="spotify-redirect-uri"></code></li>
+                                            <li>Copy the Client ID and paste it into the field above.</li>
+                                        </ol>
+                                    </div>
+                                </div>
+                                <p id="spotify-settings-message" role="status" hidden></p>
+                                <a id="spotify-auth-open" target="_blank" rel="noopener noreferrer" hidden>Continue in Spotify →</a>
+                                <button id="spotify-auth-cancel" type="button" hidden>Cancel authorization</button>
                             </div>
-                            <label class="spotify-search-preference"><input id="spotify-search-enabled" type="checkbox" disabled> Include Spotify in search</label>
+                            <label class="spotify-search-preference"><input id="spotify-search-enabled" type="checkbox" disabled> Include Spotify Results in Search</label>
                         </section>
                         <h3>Other Settings</h3>
                         <div>
@@ -171,6 +226,8 @@
       <script src='JS/jquery.knob.min.js'></script>
       <script src='JS/anime.min.js'></script>
       <script src='JS/item-ui.js'></script>
+      <script src='JS/search-nav.js'></script>
+      <script src='JS/spotify-settings.js'></script>
       <script src='JS/spotify.js'></script>
       <script src='JS/audio-output.js'></script>
       <script src='JS/main.js'></script>

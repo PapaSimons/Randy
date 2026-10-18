@@ -51,11 +51,11 @@ function settingsFixture(){const calls=[],prefs={bitrate:160,binary:'helper',nor
 test('personal Client ID is saved in SpotOn, preserves public prefs and excludes credentials',async()=>{const f=settingsFixture();const result=await setClientId(f.spotify,client);const post=f.calls.find(c=>c.options);assert.equal(post.path.includes(client),false);assert.doesNotMatch(post.options.body,/SECRET|spDc|access_token|password|secret/);const form=new URLSearchParams(post.options.body);assert.equal(form.get('pref_bitrate'),'160');assert.equal(form.has('pref_normalization'),false);assert.equal(form.get('pref_diagnosticMode'),'1');assert.equal(result.reauthorizationRequired,true);assert.doesNotMatch(JSON.stringify(result),new RegExp(client));});
 for(const invalid of ['', 'bad', 'z'.repeat(32), client+'; command'])test('invalid Client ID is rejected before any LMS write: '+invalid,async()=>{const f=settingsFixture();await assert.rejects(setClientId(f.spotify,invalid),/32 hexadecimal/);assert.equal(f.calls.length,0);});
 test('Client ID setup fails safely when SpotOn is unavailable',async()=>{const f=settingsFixture();f.spotify.request=async()=>{throw new Error('LMS unavailable');};await assert.rejects(setClientId(f.spotify,client),/LMS unavailable/);});
-test('Client ID form cannot redirect a save to an unexpected server',async()=>{const f=settingsFixture();f.spotify.request=async()=>({text:async()=>'<form action="https://evil.example"><input name="pref_clientId"></form>'});await assert.rejects(setClientId(f.spotify,client),/Unexpected/);});
+test('Client ID save uses a fixed SpotOn handler without reading rendered HTML',async()=>{const f=settingsFixture();await setClientId(f.spotify,client);assert.equal(f.calls.length,1);assert.equal(f.calls[0].path,'/plugins/SpotOn/settings/basic.html');assert.equal(f.calls[0].options.headers['X-Requested-With'],'XMLHttpRequest');});
 
 
 test('dead Connect helper does not prevent Randy from reclaiming an idle LMS player',async()=>{const f=fixture();f.owner.observe(connect());f.s.request=async()=>({json:async()=>({daemons:[]})});assert.equal(await f.owner.prepareForRandyPlayback(f.player),true);assert.equal(f.owner.getOwnership(),'randy');});
-test('silent Connect buffering is diagnosed without resuming or advancing Randy',()=>{const f=fixture();const raw=connect();raw.time=0;f.owner.observe(raw);f.owner.waitingSince=Date.now()-11000;const result=f.owner.observe(raw);assert.equal(result.audioStalled,true);assert.equal(f.calls.length,0);assert.equal(f.owner.getOwnership(),'spotify_connect');});
+test('silent Connect buffering is diagnosed without resuming or advancing Randy',()=>{const f=fixture();const raw=connect();raw.time=0;f.owner.observe(raw);f.owner.progress.at=f.owner.now()-26000;const result=f.owner.observe(raw);assert.equal(result.audioStalled,true);assert.equal(f.calls.length,0);assert.equal(f.owner.getOwnership(),'spotify_connect');});
 
 test('ordinary Randy ownership recovers after LMS outage so natural EOF remains enabled',()=>{const f=fixture();f.owner.disconnected();assert.equal(f.owner.getOwnership(),'disconnected');f.owner.observe({playlist_loop:[{url:'file:///music/A.wav'}]});assert.equal(f.owner.getOwnership(),'randy');});
 
@@ -63,3 +63,50 @@ test('LMS Browse replay of Connect history is not mistaken for a live Connect se
 test('stopped Connect history cannot be resumed through LMS Play as though it were live',async()=>{const f=fixture();f.owner.observe(connect());f.setRaw(connect('stop'));await assert.rejects(f.owner.remoteControl('play'),/establish a live session/);assert.equal(f.calls.some(c=>c[0]==='play'),false);});
 
 test('late first Connect observation does not cancel an explicit Randy handoff already being prepared',async()=>{const f=fixture(),states=[];f.owner.on('change',e=>states.push(e.state));f.player.getStatus=async()=>{f.owner.observe(connect());return {connected:true};};assert.equal(await f.owner.prepareForRandyPlayback(f.player),true);assert.equal(states.includes('spotify_connect'),false);assert.equal(f.owner.getOwnership(),'randy');});
+
+test('Connect to Randy refreshes helper only after LMS queue release and before permitting load',async()=>{
+ const f=fixture();let recovered=false;
+ f.s.recovery={recover:async(current,options)=>{
+   assert.equal(current(),true);assert.equal(options.reason,'handoff');
+   assert.ok(f.calls.some(c=>c[0]==='playlist'&&c[1]==='clear'));
+   assert.equal(f.owner.getOwnership(),'transitioning');recovered=true;
+ }};
+ f.owner.observe(connect());assert.equal(await f.owner.prepareForRandyPlayback(f.player),true);
+ assert.equal(recovered,true);assert.equal(f.owner.getOwnership(),'randy');
+});
+test('ordinary local selection does not refresh the Spotify helper',async()=>{
+ const f=fixture();f.setRaw({mode:'play',playlist_tracks:1,playlist_loop:[{url:'file:///music/local.flac'}]});
+ f.s.recovery={recover:async()=>assert.fail('unexpected helper restart')};
+ assert.equal(await f.owner.prepareForRandyPlayback(f.player),true);
+});
+test('replacement during handoff refresh cancels the old playback request',async()=>{
+ const f=fixture();let selected=true;
+ f.s.recovery={recover:async()=>{selected=false;return true;}};
+ f.owner.observe(connect());assert.equal(await f.owner.prepareForRandyPlayback(f.player,()=>selected),false);
+});
+test('failed handoff refresh never permits loading into a half-reset session',async()=>{
+ const f=fixture();f.s.recovery={recover:async()=>{throw new Error('helper restart failed');}};
+ f.owner.observe(connect());await assert.rejects(f.owner.prepareForRandyPlayback(f.player),/helper restart failed/);
+ assert.equal(f.owner.getOwnership(),'disconnected');
+});
+
+test('local/radio handoff permits loading before helper refresh starts',async()=>{
+ const f=fixture(),calls=[];let release;
+ f.s.recovery={recover:()=>{calls.push('refresh');return new Promise(r=>release=r);}};
+ f.owner.observe(connect());assert.equal(await f.owner.prepareForRandyPlayback(f.player,()=>true,{deferConnectReset:true}),true);
+ assert.deepEqual(calls,[]);assert.equal(f.owner.getOwnership(),'randy');
+ f.owner.afterRandyPlaybackStarted(()=>true);assert.deepEqual(calls,['refresh']);
+ release(true);await new Promise(setImmediate);assert.equal(f.owner.needsConnectRefresh,false);
+});
+test('ordinary local changes do not wait for a helper refresh already in progress',async()=>{
+ const f=fixture();f.s.recovery={pending:new Promise(()=>{})};
+ f.setRaw({mode:'play',playlist_loop:[{url:'file:///local.wav'}]});
+ assert.equal(await f.owner.prepareForRandyPlayback(f.player,()=>true,{deferConnectReset:true}),true);
+});
+
+test('removed account cannot republish stale Connect metadata or artwork',()=>{
+ const f=fixture();f.owner.observe(connect());const old=f.owner.external;
+ f.s.accountsUnavailable=true;
+ assert.equal(f.owner.observe(connect()),null);assert.equal(f.owner.getOwnership(),'disconnected');
+ assert.equal(f.owner.publish({externalPlayback:old},{emit:()=>assert.fail('stale account metadata')}),false);
+});

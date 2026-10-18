@@ -18,13 +18,17 @@ test('titles are text, never injected markup, for both item sources',()=>{
  const {ui}=fixture();for(const source of['local','spotify']){const row=ui.row({source,title:'<script>alert(1)</script>'},{});assert.equal(row.find('script').length,0);assert.match(row.find('.randy-item-title').text(),/<script>/);}
 });
 
-test('Connect playlist row shows details and duration without album artwork',()=>{
- const f=fixture();f.base('body').append('<div id="spotify-connect-toast"></div><div id="songlist"></div>');
+test('Connect uses only the overlay and detached seek state without inserting or changing a queue item',()=>{
+ const f=fixture();f.base('body').append('<div id="spotify-connect-toast"></div><div id="songlist"><div id="song_0" class="onesong onesong-current">Local title</div></div>');
+ f.context.cursong=f.base('#song_0');
  vm.runInContext(fs.readFileSync(require.resolve('../public/JS/spotify.js'),'utf8'),f.context);
  f.context.spotifyUI.setOwnership({state:'spotify_connect',playbackState:'playing',trackKey:'A'});
- f.context.spotifyUI.setOwnership({state:'spotify_connect',playbackState:'playing',trackKey:'A'});
- const row=f.base('#spotify-connect-nowplaying');assert.equal(row.length,1);assert.equal(row.children('.onesong-details').length,1);
- assert.equal(row.children('.randy-cover').length,0);assert.equal(row.children('.onesong-len').length,1);assert.equal(row.find('small').length,0);
+ assert.equal(f.base('#spotify-connect-nowplaying').length,0);
+ assert.equal(f.base('#songlist .onesong').length,1);assert.equal(f.base('#song_0').text(),'Local title');
+ assert.equal(f.context.cursong.find('.onesong-len').length,1);
+ f.context.cursong.find('.onesong-len').attr('len','123');assert.equal(f.context.cursong.find('.onesong-len').attr('len'),'123');
+ f.context.spotifyUI.setOwnership({state:'randy'});assert.equal(f.context.cursong.attr('id'),'song_0');
+ assert.equal(f.base('#song_0').hasClass('onesong-current'),true);
 });
 
 test('source icons are shown only for Spotify',()=>{
@@ -37,7 +41,7 @@ test('Spotify album search row offers Play/Add while its title still opens the a
  const f=fixture(),calls=[];
  const source=fs.readFileSync(require.resolve('../public/JS/spotify.js'),'utf8');
  f.context.action=(item,name)=>calls.push(name);f.context.open=item=>calls.push('open');
- vm.runInContext(source.slice(source.indexOf('    function row(item)'),source.indexOf('    function open(item)')),f.context);
+ vm.runInContext(source.slice(source.indexOf('    function row('),source.indexOf('    function backFromSpotify(')),f.context);
  const row=f.context.row({kind:'album',title:'Album',key:'album-key'});
  assert.deepEqual(row.find('button').map((i,e)=>e.attribs['aria-label']).get(),['Play','Add to queue']);
  for(const button of row.find('button').toArray())f.events.get(button)();
@@ -64,4 +68,29 @@ test('navigation and loading controls use shared inline icons instead of image f
  assert.equal($('button[data-randy-icon="search"][aria-label="Search"]').length,1);
  assert.equal($('.prev[data-randy-icon="back"][tabindex="0"]').length,1);
  assert.equal($('.next[data-randy-icon="next"][tabindex="0"]').length,1);
+});
+
+test('Connect chime sounds once per session, never on song changes or pause/resume',()=>{
+ const f=fixture(),listeners={},notes=[];
+ f.context.document.addEventListener=(name,callback)=>listeners[name]=callback;
+ f.context.window.AudioContext=class {
+  constructor(){this.state='running';this.currentTime=0;this.destination={};}
+  createOscillator(){return {frequency:{},connect(){},start(){notes.push(this.frequency.value);},stop(){},disconnect(){}};}
+  createGain(){return {gain:{setValueAtTime(){},linearRampToValueAtTime(){},exponentialRampToValueAtTime(){}},connect(){},disconnect(){}};}
+ };
+ f.base('body').append('<div id="spotify-connect-toast"></div><div id="songlist"></div>');
+ vm.runInContext(fs.readFileSync(require.resolve('../public/JS/spotify.js'),'utf8'),f.context);
+ listeners.pointerdown();const ui=f.context.spotifyUI;
+ ui.setOwnership({state:'spotify_connect'});assert.equal(notes.length,0);
+ ui.setOwnership({state:'spotify_connect',playbackState:'playing',trackKey:'A'});assert.equal(notes.length,2);
+ ui.setOwnership({state:'spotify_connect',playbackState:'playing',trackKey:'B'});
+ ui.setOwnership({state:'spotify_connect',playbackState:'paused'});
+ ui.setOwnership({state:'spotify_connect',playbackState:'playing'});assert.equal(notes.length,2);
+ ui.setOwnership({state:'randy'});ui.setOwnership({state:'spotify_connect',playbackState:'playing'});assert.equal(notes.length,4);
+});
+test('Connect works when browser audio is unavailable or has not been unlocked',()=>{
+ const f=fixture();f.base('body').append('<div id="spotify-connect-toast"></div><div id="songlist"></div>');
+ vm.runInContext(fs.readFileSync(require.resolve('../public/JS/spotify.js'),'utf8'),f.context);
+ assert.doesNotThrow(()=>f.context.spotifyUI.setOwnership({state:'spotify_connect',playbackState:'playing'}));
+ assert.equal(f.base('#spotify-connect-toast').prop('hidden'),false);
 });

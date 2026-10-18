@@ -19,9 +19,9 @@ async function server(env = {}, options = {}) {
         songfile: '/music/' + title + '.flac', albumart: '/cover.jpg',
         tags: { common: { title, artist: 'Artist', album: 'Album' } }
     }));
-    const settings = { musicfolders: null, audioOutputDevice: 'auto', playonstart: options.playonstart || 'false' };
+    const settings = { musicfolders: options.musicfolders || null, audioOutputDevice: 'auto', playonstart: options.playonstart || 'false' };
     const playlist = {
-        index: 0, nextCalls: 0,
+        index: options.playing || 0, nextCalls: 0,
         getSettings: () => settings,
         setSetting: (key, value) => { settings[key] = value; },
         getPlayList: () => songs,
@@ -30,7 +30,8 @@ async function server(env = {}, options = {}) {
         getStickyList: limit => { playlist.stickyLimit = limit; return []; },
         getVolume: () => 63,
         setVolume: value => { playlist.volume = value; },
-        initPlaylist: () => Promise.resolve(songs[0]),
+        initPlaylist: () => options.initialization || Promise.resolve(songs[playlist.index]),
+        getAllSongs: () => Promise.resolve([]),
         nextsong: () => { playlist.nextCalls++; playlist.index = 1; return songs[1]; },
         prevsong: () => { playlist.index = 0; return songs[0]; },
         playsong: index => { playlist.index = index; return songs[index]; }
@@ -63,7 +64,7 @@ async function server(env = {}, options = {}) {
         './lib/spotify-routes': require('../lib/spotify-routes'),
         metaget: {},
         child_process: { spawnSync: () => {} },
-        fs: { existsSync: () => false },
+        fs: { existsSync: () => !!options.musicfolders },
         'node-disk-info': { getDiskInfo: () => Promise.resolve([]) },
         'node:os': { platform: () => 'darwin' }
     };
@@ -456,4 +457,47 @@ test('new browser receives current Connect metadata even though Connect has no R
  f.io.emit('connection',browser);await flush();
  const meta=events.findLast(e=>e.name==='nowplaying').data;assert.equal(meta.source,'spotify_connect');assert.equal(meta.title,'Connect title');
  assert.ok(events.some(e=>e.name==='spotify-ownership'&&e.data.state==='spotify_connect'));assert.equal(f.songs[0].tags.common.title,'A');
+});
+
+test('server starts local audio before requesting deferred Connect refresh',async()=>{
+    const f=await server({RANDY_PLAYER_BACKEND:'lms'}),order=[];
+    f.context.spotify.ownership.prepareForRandyPlayback=async(player,current,options)=>{
+        assert.equal(options.deferConnectReset,true);order.push('release');return true;
+    };
+    f.players[0].loadAndPlay=async()=>order.push('load');
+    f.context.spotify.ownership.afterRandyPlaybackStarted=current=>{assert.equal(current(),true);order.push('refresh');};
+    await f.context.playsong(f.songs[0]);assert.deepEqual(order,['release','load','refresh']);
+});
+test('server waits for SpotOn readiness when selecting its own Spotify track',async()=>{
+    const f=await server({RANDY_PLAYER_BACKEND:'lms'});
+    let deferred;
+    f.context.spotify.ownership.prepareForRandyPlayback=async(player,current,options)=>{deferred=options.deferConnectReset;return true;};
+    f.context.spotify.ownership.afterRandyPlaybackStarted=()=>assert.fail('Spotify cannot reset its helper alongside playback');
+    await f.context.playsong({type:'spotify',songfile:'spoton://track:3M0zi8iD2KRzY71XcGFUpE',tags:{common:{title:'Track',artist:'Artist',album:'Album'},format:{duration:150}}});
+    assert.equal(deferred,false);
+});
+
+for(const setting of ['true',true])test('startup honors enabled flag after delayed playlist initialization and previous Connect ownership: '+setting,async()=>{
+    let finish;
+    const initialization=new Promise(resolve=>finish=resolve);
+    const f=await server({RANDY_PLAYER_BACKEND:'lms'},{playonstart:setting,initialization,playing:1});
+    const player=f.players[0];assert.equal(player.calls.filter(c=>c[0]==='loadAndPlay').length,0);
+    f.context.spotify.ownership.observe({mode:'stop',time:0,playlist_loop:[{url:'spoton://connect-old'}]});
+    let previousOwner;
+    f.context.spotify.ownership.prepareForRandyPlayback=async()=>{previousOwner=f.context.spotify.ownership.getOwnership();return true;};
+    finish(f.songs[1]);await flush();await flush();
+    const loads=player.calls.filter(c=>c[0]==='loadAndPlay');assert.equal(loads.length,1);assert.equal(loads[0][1],f.songs[1]);
+    assert.equal(previousOwner,'spotify_connect');assert.equal(f.playlist.nextCalls,0);
+    f.context.playCurrentSongOnStart();await flush();assert.equal(player.calls.filter(c=>c[0]==='loadAndPlay').length,1);
+});
+for(const setting of ['false',false])test('disabled restart flag leaves current queue stopped after delayed library loading: '+setting,async()=>{
+    let finish;const initialization=new Promise(resolve=>finish=resolve);
+    const f=await server({RANDY_PLAYER_BACKEND:'lms'},{playonstart:setting,initialization,musicfolders:['/music']});
+    finish(f.songs[0]);await flush();await flush();
+    assert.equal(f.players[0].calls.filter(c=>c[0]==='loadAndPlay').length,0);
+});
+test('music-folder startup loads the saved queue item exactly once with restart playback enabled',async()=>{
+    const f=await server({RANDY_PLAYER_BACKEND:'lms'},{playonstart:'true',musicfolders:['/music'],playing:1});
+    await flush();const loads=f.players[0].calls.filter(c=>c[0]==='loadAndPlay');
+    assert.equal(loads.length,1);assert.equal(loads[0][1],f.songs[1]);
 });
