@@ -83,6 +83,20 @@ app.post('/getStickyList', function (req, res) {
     res.json({"results":playlist.getStickyList(req.body && req.body.limit)});
 });
 
+app.post('/renameSticky', function (req, res) {
+    try {
+        res.json({success:true, sticky:playlist.renameSticky(req.body?.id, req.body?.title)});
+    } catch (error) {
+        const status = [400, 404].includes(error.status) ? error.status : 500;
+        res.status(status).json({success:false, error:status === 500 ? 'Could not save the sticky title. Please try again.' : error.message});
+    }
+});
+
+app.post('/getLibrary', function (req,res) {
+    try { res.json({results:playlist.getLibrary()}); }
+    catch { res.status(500).json({error:'Could not load your music library. Please try again.'}); }
+});
+
 app.post('/getAlbums', function (req, res) {
     res.header("Access-Control-Allow-Origin", "http://localhost");
     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");

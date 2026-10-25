@@ -43,7 +43,18 @@ var spotifyUI = (function () {
         if (!item.song && item.kind === 'album') {
             actions.play=function(){action(item,'play');};
             actions.add=function(){action(item,'add');};
+            actions.sticky=function(){action(item,'sticky');};
         }
+        return randyUI.row(Object.assign({},item,{source:'spotify'}),actions);
+    }
+    function libraryAction(item,name) {
+        return request('queue',{action:name,song:item.song,key:item.song?undefined:item.key})
+            .then(function(result){if(!result.cancelled)message({message:name==='sticky'?'Added Spotify sticky':'Spotify: '+result.count+' track(s)'});})
+            .catch(function(){message({message:'Could not update your Spotify queue or bookmarks. Please try again.'});});
+    }
+    function libraryRow(item,onOpen) {
+        var actions=item.song?{play:function(){libraryAction(item,'play');},add:function(){libraryAction(item,'add');},sticky:function(){libraryAction(item,'sticky');}}
+            :{open:function(){onOpen(item);}};
         return randyUI.row(Object.assign({},item,{source:'spotify'}),actions);
     }
     function backFromSpotify() {
@@ -76,6 +87,7 @@ var spotifyUI = (function () {
                 pane.append(button('Play ' + collection.kind, function () { action(item, 'play'); }),
                     button('Add ' + collection.kind, function () { action(item, 'add'); }));
             }
+            if (collection.kind === 'album') pane.append(button('Bookmark album', function () { action(item, 'sticky'); }));
             if (collection.message) pane.append($('<p>').text(collection.message));
             else if (!collection.items.length) pane.append($('<p>').text('No tracks available.'));
             collection.items.forEach(function (entry) { pane.append(row(entry, true)); });
@@ -208,6 +220,6 @@ var spotifyUI = (function () {
         refresh(); setInterval(refresh, 5000);
         if (typeof socket !== 'undefined') { socket.on('spotify-problem', message);socket.on('spotify-account-removed',accountRemoved); }
     });
-    return { albumAction:function(album,name){return action({bookmark:album},name);}, setOwnership:setOwnership, updateNowPlaying:updateNowPlaying, useConnectTarget:useConnectTarget, search: search, invalidate: invalidate, closeBrowse:closeBrowse, accountRemoved:accountRemoved, cover: cover, refresh: refresh,
+    return { libraryRequest:request, libraryAction:libraryAction, libraryRow:libraryRow, albumAction:function(album,name){return action({bookmark:album},name);}, setOwnership:setOwnership, updateNowPlaying:updateNowPlaying, useConnectTarget:useConnectTarget, search: search, invalidate: invalidate, closeBrowse:closeBrowse, accountRemoved:accountRemoved, cover: cover, refresh: refresh,
         escape: function (value) { return String(value || '').replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); } };
 }());

@@ -9,6 +9,7 @@ var randyUI = (function () {
         menu:'M4 6h16M4 12h16M4 18h16', check:'M5 12l4 4L19 6',
         spinner:'M12 3a9 9 0 1 1-9 9',
         play:'M8 5l11 7-11 7z', add:'M12 5v14M5 12h14',
+        edit:'M4 16l-1 5 5-1L20 8l-4-4zM14 6l4 4',
         sticky:'M6 3h12v18l-6-4-6 4z',
         spotify:'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20M6 9c4-2 8-2 12 0M7 12c3-1.5 7-1.5 10 0M8 15c3-1 5-1 8 0',
         local:'M4 4h16v16H4zM8 8h8M8 12h5',

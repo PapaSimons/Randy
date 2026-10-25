@@ -497,43 +497,15 @@ function browsepane(mode, options){
                      ht += "<h3>Sticky</h3>";
                      for (i in res){
                          templist.allstickies.push(res[i].path);
-                         ht += "<div class='search-result'>";
-                         ht += "<div class='search-result-name clickablelink' onclick='doSongOption(\"playnow\",\"allstickies\",\""+i+"\")'>" + (res[i].source === 'spotify' ? randyUI.sourceIcon('spotify') + spotifyUI.escape(res[i].name) : res[i].name) + "</div>";
-                         ht += "<div class='search-result-options'>" + songoptions('allstickies',i) + "</div>";
-                         ht += "</div>";
+                         ht += "<div class='sticky-slot' data-index='"+i+"'></div>";
                      }
                  }
-                $('#browse-stickies').html(ht); 
+                $('#browse-stickies').html(ht);
+                mountStickyRows($('#browse-stickies'),res,'allstickies');
             });
             break;
         case "files":
-            api.getAlbums().then(function(rtn){
-                var res = rtn.results;     
-                var ht = "";
-                ht += "<button type='button' class='randy-action' onclick='browsepane(\"init\");' aria-label='Back to home' title='Back to home'>" + randyUI.icon('back') + "</button>";
-                 if (res.albums.length > 0){
-                     templist.allalbums = [];
-                     //ht += "<h3 id='search-local-albums' data-search-section='Local albums' data-search-count='" + res.albums.length + "'>Local albums</h3>";
-                     var lastalb = "";
-                     for (i in res.albums){
-                         var albarr = res.albums[i].albumpath.split("/");
-                         var curalb = albarr[(albarr.length - 1)];
-                         if (curalb != lastalb){
-                            ht += "<h3>" + curalb + "</h3>";
-                         }
-                         lastalb = curalb;
-                         templist.allalbums.push(res.albums[i].album);
-                         ht += "<div class='search-result'>";
-                         ht += "<div class='search-result-name' onclick='showAlbum(\"allalbums\",\""+i+"\")'>";
-                         ht += "<span class='clickablelink'>" + res.albums[i].name + "</span>"; 
-                         //ht += "<span class='search-result-path'>" + res.albums[i].albumpath + "</span>";
-                         ht += "</div>"; 
-                         ht += "<div class='search-result-options'>" + songoptions('allalbums',i) + "</div>";
-                         ht += "</div>";
-                     }
-                 }
-                $('#browse-files').html(ht); 
-            });
+            libraryUI.open();
             break;
         case "album":
             var albumPath = templist.curalbum;
@@ -725,13 +697,18 @@ function populateStickies(ele, lim){
              }
              for (i in res){
                  templist.initstickies.push(res[i].path);
-                 ht += "<div class='search-result'>";
-                 ht += "<div class='search-result-name clickablelink' onclick='doSongOption(\"playnow\",\"initstickies\",\""+i+"\")'>" + (res[i].source === 'spotify' ? randyUI.sourceIcon('spotify') + spotifyUI.escape(res[i].name) : res[i].name) + "</div>";
-                 ht += "<div class='search-result-options'>" + songoptions('initstickies',i) + "</div>";
-                 ht += "</div>";
+                 ht += "<div class='sticky-slot' data-index='"+i+"'></div>";
              }
          }
-        ele.html(ht); 
+        ele.html(ht);
+        mountStickyRows(ele,res,'initstickies');
+    });
+}
+
+function mountStickyRows(container,items,list){
+    container.find('.sticky-slot').each(function(){
+        var index=Number(this.dataset.index);
+        $(this).replaceWith(stickyUI.row(items[index],list,index));
     });
 }
 

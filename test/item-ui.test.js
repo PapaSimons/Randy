@@ -37,15 +37,15 @@ test('source icons are shown only for Spotify',()=>{
  const local=ui.row({source:'local',title:'Local'},{});assert.equal(local.find('.randy-source').length,0);
 });
 
-test('Spotify album search row offers Play/Add without bookmarks while its title still opens the album',()=>{
+test('Spotify album search row offers Play/Add/Bookmark while its title still opens the album',()=>{
  const f=fixture(),calls=[];
  const source=fs.readFileSync(require.resolve('../public/JS/spotify.js'),'utf8');
  f.context.action=(item,name)=>calls.push(name);f.context.open=item=>calls.push('open');
  vm.runInContext(source.slice(source.indexOf('    function row('),source.indexOf('    function backFromSpotify(')),f.context);
  const row=f.context.row({kind:'album',title:'Album',key:'album-key'});
- assert.deepEqual(row.find('button').map((i,e)=>e.attribs['aria-label']).get(),['Play','Add to queue']);
+ assert.deepEqual(row.find('button').map((i,e)=>e.attribs['aria-label']).get(),['Play','Add to queue','Sticky']);
  for(const button of row.find('button').toArray())f.events.get(button)();
- f.events.get(row.find('.search-result-name')[0])();assert.deepEqual(calls,['play','add','open']);
+ f.events.get(row.find('.search-result-name')[0])();assert.deepEqual(calls,['play','add','sticky','open']);
 });
 
 test('local album endpoint supplies cached cover artwork and track metadata to the detail view',()=>{

@@ -19,12 +19,16 @@ var api = {
     getStickyList: function (l){
         return callAPI("getStickyList",{limit:l});
     },
+    renameSticky: function (id,title){
+        return callAPI('renameSticky',{id:id,title:title});
+    },
     getRandomAlbums: function (l){
         return callAPI("getRandomAlbums",{limit:l});
     },
     getAlbum: function (d){
         return callAPI("getAlbum",{albumdir:d});
     },
+    getLibrary: function(){ return callAPI('getLibrary',{}); },
     getAlbums: function (l){
         return callAPI("getAlbums",{limit:l});
     },
